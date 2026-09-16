@@ -165,8 +165,12 @@ app.post('/api/contador/login', async (req, res) => {
 
         const contador = resultado.rows[0];
         const senhaArmazenada = contador.senha || contador.senhahash;
-        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
 
+        if (!senhaArmazenada) {
+            return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+        }
+
+        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
         if (!senhaValida) {
             return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
         }
@@ -176,7 +180,8 @@ app.post('/api/contador/login', async (req, res) => {
         res.json({
             mensagem: 'Login realizado com sucesso!',
             token,
-            nomeEscritorio: contador.nomeescritorio || 'Escritório Contábil'
+            nomeEscritorio: contador.nomeescritorio || 'Escritório Contábil',
+            nome_escritorio: contador.nomeescritorio || 'Escritório Contábil'
         });
     } catch (erro) {
         res.status(500).json({ erro: 'Erro interno no servidor: ' + erro.message });
@@ -197,7 +202,7 @@ app.get('/api/empresas', verificarToken, async (req, res) => {
     }
 });
 
-// Cadastro de empresa pelo Contador (agora a senha é opcional ou gerada automaticamente se vazia)
+// Cadastro de empresa pelo Contador
 app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     try {
         let { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
@@ -207,7 +212,6 @@ app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
 
         cnpj = cnpj.trim();
         
-        // Se o contador não mandou senha, definimos uma provisória ou deixamos nula para o cliente definir no primeiro acesso
         let senhaHash = null;
         if (senha) {
             senhaHash = await bcrypt.hash(senha, 10);
@@ -247,7 +251,7 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
 
 // ==================== LOGIN E PRIMEIRO ACESSO DO CLIENTE ====================
 
-// Rota de Primeiro Acesso: Cliente coloca o CNPJ e define sua senha exclusiva
+// Rota para definir senha (Primeiro Acesso)
 app.post('/api/empresa/definir-senha', async (req, res) => {
     try {
         let { cnpj, novaSenha } = req.body;
@@ -294,7 +298,7 @@ app.post('/api/empresa/login', async (req, res) => {
         const senhaArmazenada = empresa.senha || empresa.senhahash;
 
         if (!senhaArmazenada) {
-            return res.status(400).json({ erro: 'Esta empresa ainda não possui senha cadastrada. Utilize a opção de "Primeiro Acesso / Definir Senha".' });
+            return res.status(400).json({ erro: 'Esta empresa ainda não possui senha cadastrada.' });
         }
 
         const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
