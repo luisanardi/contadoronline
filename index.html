@@ -65,24 +65,25 @@
             </button>
         </form>
 
-        <!-- Formulário de Recuperação de Senha (Oculto Inicialmente) -->
+        <!-- Formulário de Recuperação de Senha (Somente E-mail) -->
         <form id="form-recuperar" class="space-y-4 hidden">
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">E-mail Cadastrado</label>
                 <input type="email" id="rec-email" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="seu.email@escritorio.com">
             </div>
 
-            <div>
+            <!-- Campo para Nova Senha aparece somente após digitar o e-mail ou integrado de forma limpa -->
+            <div id="bloco-nova-senha" class="hidden">
                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nova Senha</label>
                 <input type="password" id="rec-nova-senha" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="••••••••">
             </div>
 
-            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-amber-600/20">
-                Redefinir Senha
+            <button type="submit" id="btn-acao-recuperar" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-amber-600/20">
+                Avançar / Redefinir
             </button>
         </form>
 
-        <!-- Alternadores (Login, Cadastro e Recuperação) -->
+        <!-- Alternadores -->
         <div class="mt-6 space-y-2 text-center">
             <div>
                 <button id="btn-alternar" type="button" onclick="alternarModo('cadastro')" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
@@ -112,11 +113,15 @@
             const btnAlternar = document.getElementById('btn-alternar');
             const btnEsqueci = document.getElementById('btn-esqueci');
             const alerta = document.getElementById('mensagem-alerta');
+            const blocoNovaSenha = document.getElementById('bloco-nova-senha');
+            const btnAcaoRecuperar = document.getElementById('btn-acao-recuperar');
 
             alerta.classList.add('hidden');
             formLogin.classList.add('hidden');
             formCadastro.classList.add('hidden');
             formRecuperar.classList.add('hidden');
+            blocoNovaSenha.classList.add('hidden');
+            btnAcaoRecuperar.textContent = 'Redefinir Senha';
 
             if (tipo === 'cadastro') {
                 formCadastro.classList.remove('hidden');
@@ -127,8 +132,8 @@
                 btnEsqueci.classList.remove('hidden');
             } else if (tipo === 'recuperar') {
                 formRecuperar.classList.remove('hidden');
-                titulo.textContent = 'Redefinir Senha';
-                subtitulo.textContent = 'Digite sua nova senha de acesso';
+                titulo.textContent = 'Recuperar Senha';
+                subtitulo.textContent = 'Informe seu e-mail cadastrado';
                 btnAlternar.textContent = 'Lembrou a senha? Faça login aqui';
                 btnAlternar.setAttribute('onclick', "alternarModo('login')");
                 btnEsqueci.classList.add('hidden');
@@ -202,11 +207,31 @@
             }
         });
 
-        // Recuperar Senha
+        // Recuperar Senha (Etapa única ou dupla)
         document.getElementById('form-recuperar').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('rec-email').value;
+            const blocoNovaSenha = document.getElementById('bloco-nova-senha');
+            const btnAcao = document.getElementById('btn-acao-recuperar');
+
+            // Se o campo de nova senha estiver oculto, revela ele primeiro
+            if (blocoNovaSenha.classList.contains('hidden')) {
+                if (!email) {
+                    mostrarAlerta('Digite seu e-mail primeiro.', 'erro');
+                    return;
+                }
+                blocoNovaSenha.classList.remove('hidden');
+                btnAcao.textContent = 'Confirmar Nova Senha';
+                mostrarAlerta('Agora digite a sua nova senha.', 'sucesso');
+                return;
+            }
+
+            // Se já estiver visível, executa a alteração
             const novaSenha = document.getElementById('rec-nova-senha').value;
+            if (!novaSenha) {
+                mostrarAlerta('Digite a nova senha.', 'erro');
+                return;
+            }
 
             try {
                 const resposta = await fetch('/api/contador/esqueci-senha', {
