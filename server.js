@@ -14,6 +14,9 @@ app.use(cors());
 // Serve os arquivos estáticos da raiz
 app.use(express.static(__dirname));
 
+// CORREÇÃO DO PDF: Libera a pasta uploads publicamente
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Configuração da conexão com o banco PostgreSQL no Render
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -142,7 +145,7 @@ app.post('/api/tributos/publicar', upload.single('arquivoPdf'), async (req, res)
     }
 });
 
-// Inicialização Segura do Banco de Dados (Sem apagar dados existentes)
+// Inicialização Segura do Banco de Dados
 const initDatabase = async () => {
     try {
         await pool.query(`
