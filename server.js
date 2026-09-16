@@ -4,26 +4,30 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
-const { Pool } = require('pg'); // Conexão com PostgreSQL
+const fs = require('fs');
+const { Pool } = require('pg');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuração do Banco de Dados PostgreSQL
+// Garante que as pastas de upload existam no servidor
+const uploadDir = path.join(__dirname, 'uploads', 'guias');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configuração do Banco de Dados PostgreSQL (Local ou Render)
 const pool = new Pool({
-    user: 'seu_usuario',
-    host: 'localhost',
-    database: 'seu_banco',
-    password: 'sua_senha',
-    port: 5432,
+    connectionString: process.env.DATABASE_URL || 'postgresql://seu_usuario:sua_senha@localhost:5432/seu_banco',
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-const CHAVE_SECRETA_JWT = "sua_chave_secreta_super_segura";
+const CHAVE_SECRETA_JWT = process.env.JWT_SECRET || "sua_chave_secreta_super_segura";
 
 // Configuração para Salvamento de PDFs enviados pelo Contador
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/guias/'),
+    destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
@@ -36,24 +40,22 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { cnpj, senha } = req.body;
+    if (!cnpj || !senha) return res.status(400).json({ erro: 'CNPJ e senha são obrigatórios.' });
+
     const cnpjLimpo = cnpj.replace(/\D/g, '');
 
     try {
-        // Busca a empresa pelo CNPJ
         const result = await pool.query('SELECT * FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
         if (result.rows.length === 0) {
             return res.status(401).json({ erro: 'CNPJ ou senha inválidos.' });
         }
 
         const empresa = result.rows[0];
-
-        // Valida a senha digitada com a senha criptografada no banco
         const senhaValida = await bcrypt.compare(senha, empresa.senhahash);
         if (!senhaValida) {
             return res.status(401).json({ erro: 'CNPJ ou senha inválidos.' });
         }
 
-        // Gera Token JWT para autenticação das rotas
         const token = jwt.sign(
             { id: empresa.id, cnpj: empresa.cnpj, razaoSocial: empresa.razaosocial },
             CHAVE_SECRETA_JWT,
@@ -79,12 +81,10 @@ app.get('/api/meus-impostos', async (req, res) => {
 
     if (!token) return res.status(401).json({ erro: 'Acesso negado. Token não fornecido.' });
 
-    // Verifica se o token é válido
     jwt.verify(token, CHAVE_SECRETA_JWT, async (err, decoded) => {
         if (err) return res.status(403).json({ erro: 'Sessão expirada ou inválida.' });
 
         try {
-            // Busca todos os tributos vinculados à empresa logada
             const tributos = await pool.query(
                 'SELECT * FROM Tributos WHERE EmpresaID = $1 ORDER BY DataVencimento ASC',
                 [decoded.id]
@@ -101,19 +101,18 @@ app.get('/api/meus-impostos', async (req, res) => {
 // ==========================================
 app.post('/api/tributos/publicar', upload.single('pdf_file'), async (req, res) => {
     const { cnpj, tipoImposto, competencia, valor, vencimento, pix } = req.body;
+    if (!cnpj) return res.status(400).json({ erro: 'CNPJ é obrigatório.' });
+
     const cnpjLimpo = cnpj.replace(/\D/g, '');
     const caminhoPDF = req.file ? req.file.path : null;
 
     try {
-        // 1. Identifica a empresa pelo CNPJ
         const empresaRes = await pool.query('SELECT id FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
         if (empresaRes.rows.length === 0) {
             return res.status(404).json({ erro: 'Empresa com este CNPJ não está cadastrada.' });
         }
 
         const empresaId = empresaRes.rows[0].id;
-
-        // 2. Insere a guia de imposto no banco
         const sql = `
             INSERT INTO Tributos (EmpresaID, TipoImposto, Competencia, Valor, DataVencimento, PixCopiaECola, CaminhoPDF)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -126,4 +125,6 @@ app.post('/api/tributos/publicar', upload.single('pdf_file'), async (req, res) =
     }
 });
 
-app.listen(3000, () => console.log('API executando na porta 3000'));
+// Porta dinâmica configurada para o Render (process.env.PORT)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`API executando na porta ${PORT}`));
