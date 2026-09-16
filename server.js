@@ -70,7 +70,6 @@ async function iniciarBanco() {
             );
         `);
 
-        // Garante compatibilidade caso a coluna antiga se chame 'senhahash' ou 'senha'
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
@@ -120,13 +119,19 @@ app.post('/api/contador/cadastro', async (req, res) => {
 
         const hashSenha = await bcrypt.hash(senha, 10);
         
-        // Insere preenchendo tanto 'senha' quanto 'senhahash' para evitar qualquer conflito de restrição
         const resultado = await pool.query(
             'INSERT INTO contadores (nomeescritorio, email, senha, senhahash) VALUES ($1, $2, $3, $3) RETURNING id, nomeescritorio, email',
             [nomeEscritorio, email, hashSenha]
         );
 
-        res.status(201).json({ mensagem: 'Escritório cadastrado com sucesso!', contador: resultado.rows[0] });
+        res.status(201).json({ 
+            mensagem: 'Escritório cadastrado com sucesso!', 
+            contador: {
+                id: resultado.rows[0].id,
+                nomeEscritorio: resultado.rows[0].nomeescritorio,
+                email: resultado.rows[0].email
+            } 
+        });
     } catch (erro) {
         if (erro.code === '23505') {
             return res.status(400).json({ erro: 'Este e-mail já está cadastrado.' });
@@ -135,7 +140,7 @@ app.post('/api/contador/cadastro', async (req, res) => {
     }
 });
 
-// Login de Contador
+// Login de Contador (Garantindo que 'nomeEscritorio' seja retornado perfeitamente)
 app.post('/api/contador/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
@@ -167,7 +172,7 @@ app.post('/api/contador/login', async (req, res) => {
         res.json({
             mensagem: 'Login realizado com sucesso!',
             token,
-            nomeEscritorio: contador.nomeescritorio
+            nomeEscritorio: contador.nomeescritorio || 'Escritório Contábil'
         });
     } catch (erro) {
         res.status(500).json({ erro: 'Erro interno no servidor: ' + erro.message });
