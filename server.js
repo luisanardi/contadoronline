@@ -116,6 +116,7 @@ function verificarToken(req, res, next) {
             return res.status(401).json({ erro: 'Token inválido ou expirado.' });
         }
         req.contadorId = decoded.id;
+        req.empresaCnpj = decoded.cnpj; // Identifica se for token de empresa
         next();
     });
 }
@@ -277,7 +278,93 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
     }
 });
 
-// ==================== ROTAS DE GUIAS ====================
+// ==================== LOGIN E PAINEL DO CLIENTE (EMPRESA) ====================
+
+// Login do Cliente/Empresa
+app.post('/api/empresa/login', async (req, res) => {
+    try {
+        const { cnpj, senha } = req.body;
+        if (!cnpj || !senha) {
+            return res.status(400).json({ erro: 'Informe o CNPJ e a senha.' });
+        }
+
+        const cnpjLimpo = cnpj.trim();
+        const resultado = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
+
+        if (resultado.rows.length === 0) {
+            return res.status(400).json({ erro: 'CNPJ ou senha incorretos.' });
+        }
+
+        const empresa = resultado.rows[0];
+        const senhaArmazenada = empresa.senha || empresa.senhahash;
+        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
+
+        if (!senhaValida) {
+            return res.status(400).json({ erro: 'CNPJ ou senha incorretos.' });
+        }
+
+        const token = jwt.sign({ id: empresa.id, cnpj: empresa.cnpj }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({
+            mensagem: 'Login realizado com sucesso!',
+            token,
+            razaoSocial: empresa.razaosocial,
+            cnpj: empresa.cnpj
+        });
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro no login: ' + erro.message });
+    }
+});
+
+// Listar guias para a empresa logada visualizar e pagar
+app.get('/api/empresa/guias', verificarToken, async (req, res) => {
+    try {
+        let cnpjConsulta = req.empresaCnpj;
+
+        // Se o token for de contador simulando ou algo assim, pega o parâmetro, mas para cliente usa o token dele
+        if (!cnpjConsulta && req.query.cnpj) {
+            cnpjConsulta = req.query.cnpj;
+        }
+
+        if (!cnpjConsulta) {
+            return res.status(400).json({ erro: 'CNPJ não identificado no token.' });
+        }
+
+        const guias = await pool.query(
+            'SELECT id, tipoimposto, competencia, valor, vencimento, pix, arquivonome, arquivotipo FROM guias WHERE cnpj = $1 ORDER BY vencimento DESC',
+            [cnpjConsulta]
+        );
+        res.json(guias.rows);
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao buscar guias: ' + erro.message });
+    }
+});
+
+// Download do PDF da Guia para o cliente pagar/consultar
+app.get('/api/empresa/guias/download/:id', verificarToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const resultado = await pool.query(
+            'SELECT arquivonome, arquivotipo, arquivodados FROM guias WHERE id = $1',
+            [id]
+        );
+
+        if (resultado.rows.length === 0 || !resultado.rows[0].arquivodados) {
+            return res.status(404).json({ erro: 'Arquivo PDF não encontrado.' });
+        }
+
+        const guia = resultado.rows[0];
+
+        res.setHeader('Content-Type', guia.arquivotipo || 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${guia.arquivonome || 'guia.pdf'}"`);
+        res.send(guia.arquivodados);
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao baixar o arquivo: ' + erro.message });
+    }
+});
+
+// ==================== ROTAS DE GUIAS (CONTADOR) ====================
 
 app.post('/api/guias', verificarToken, upload.single('arquivoPdf'), async (req, res) => {
     try {
