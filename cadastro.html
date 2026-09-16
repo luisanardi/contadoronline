@@ -227,7 +227,7 @@
         alertBox.style.display = 'block';
     }
 
-    // Envio do formulário para o Backend
+    // Envio do formulário para o Backend (Utilizando Rota Relativa)
     async function cadastrarEmpresa(event) {
         event.preventDefault();
 
@@ -246,7 +246,7 @@
         btnSubmit.innerHTML = 'Cadastrando...';
 
         try {
-            const response = await fetch('http://localhost:3000/api/cadastrar-empresa', {
+            const response = await fetch('/api/cadastrar-empresa', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cnpj, razaoSocial, senha })
