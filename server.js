@@ -206,7 +206,7 @@ app.delete('/api/tributos/:id', async (req, res) => {
     }
 });
 
-// Inicialização Segura do Banco de Dados
+// Inicialização e Migração Segura do Banco de Dados
 const initDatabase = async () => {
     try {
         await pool.query(`
@@ -231,7 +231,13 @@ const initDatabase = async () => {
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log('Tabelas verificadas e sincronizadas com sucesso no PostgreSQL!');
+
+        // Garante que a coluna datacriacao exista caso a tabela já estivesse criada sem ela
+        await pool.query(`
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        `);
+
+        console.log('Tabelas verificadas, migradas e sincronizadas com sucesso no PostgreSQL!');
     } catch (err) {
         console.error('Erro ao inicializar banco de dados:', err);
     }
