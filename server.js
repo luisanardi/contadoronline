@@ -29,10 +29,8 @@ app.post('/api/contador/cadastro', async (req, res) => {
             return res.status(400).json({ erro: 'Preencha todos os campos.' });
         }
 
-        // Padroniza o e-mail para minúsculas e remove espaços para evitar erros futuros
         email = email.trim().toLowerCase();
 
-        // Verifica se já existe
         const usuarioExiste = await pool.query('SELECT * FROM contadores WHERE LOWER(email) = $1', [email]);
         if (usuarioExiste.rows.length > 0) {
             return res.status(400).json({ erro: 'Este e-mail já está cadastrado.' });
@@ -62,7 +60,6 @@ app.post('/api/contador/login', async (req, res) => {
             return res.status(400).json({ erro: 'Preencha o e-mail e a senha.' });
         }
 
-        // Limpeza automática: converte para minúsculas e remove espaços
         email = email.trim().toLowerCase();
 
         const resultado = await pool.query('SELECT * FROM contadores WHERE LOWER(email) = $1', [email]);
@@ -94,6 +91,36 @@ app.post('/api/contador/login', async (req, res) => {
                 nome_escritorio: contador.nomeescritorio || 'Escritório'
             }
         });
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro interno no servidor: ' + erro.message });
+    }
+});
+
+// ==========================================
+// ROTA DE RECUPERAÇÃO / REDEFINIÇÃO DE SENHA
+// ==========================================
+app.post('/api/contador/esqueci-senha', async (req, res) => {
+    try {
+        let { email, novaSenha } = req.body;
+        if (!email || !novaSenha) {
+            return res.status(400).json({ erro: 'Informe o e-mail e a nova senha.' });
+        }
+
+        email = email.trim().toLowerCase();
+
+        const salt = await bcrypt.genSalt(10);
+        const senhaHash = await bcrypt.hash(novaSenha, salt);
+
+        const atualizacao = await pool.query(
+            'UPDATE contadores SET senha = $1 WHERE LOWER(email) = $2',
+            [senhaHash, email]
+        );
+
+        if (atualizacao.rowCount === 0) {
+            return res.status(404).json({ erro: 'E-mail não encontrado no sistema.' });
+        }
+
+        res.json({ mensagem: 'Senha redefinida com sucesso! Agora você pode fazer login.' });
     } catch (erro) {
         res.status(500).json({ erro: 'Erro interno no servidor: ' + erro.message });
     }
