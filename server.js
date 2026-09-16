@@ -11,10 +11,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Libera todos os arquivos HTML, CSS e JS da raiz do projeto para a web
+// Libera todos os arquivos HTML, CSS e JS para a web
 app.use(express.static(__dirname));
 
-// Garante que a pasta de upload de guias exista no servidor
+// Garante que a raiz do site abra o index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Garante que as pastas de upload existam no servidor
 const uploadDir = path.join(__dirname, 'uploads', 'guias');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
