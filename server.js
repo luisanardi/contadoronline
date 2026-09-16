@@ -53,6 +53,7 @@ async function iniciarBanco() {
                 razaosocial VARCHAR(255) NOT NULL,
                 emailempresa VARCHAR(255),
                 senha VARCHAR(255) NOT NULL,
+                senhahash VARCHAR(255),
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -71,19 +72,20 @@ async function iniciarBanco() {
             );
         `);
 
-        // Força a atualização de tamanhos e colunas para aceitar hashes de senha longos e máscaras de CNPJ
+        // Corrige restrições e colunas antigas no banco existente
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS nomeescritorio VARCHAR(255);
-            ALTER TABLE contadores ALTER COLUMN senha TYPE VARCHAR(255);
-            ALTER TABLE contadores ALTER COLUMN senhahash TYPE VARCHAR(255);
             
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS contador_id INTEGER;
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS emailempresa VARCHAR(255);
+            
             ALTER TABLE empresas ALTER COLUMN senha TYPE VARCHAR(255);
+            ALTER TABLE empresas ALTER COLUMN senhahash DROP NOT NULL;
             ALTER TABLE empresas ALTER COLUMN cnpj TYPE VARCHAR(30);
 
             ALTER TABLE guias ALTER COLUMN cnpj TYPE VARCHAR(30);
@@ -214,8 +216,9 @@ app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
         cnpj = cnpj.trim();
         const senhaHash = await bcrypt.hash(senha, 10);
 
+        // Insere salvando a senha criptografada tanto em senha quanto em senhahash para compatibilidade total
         await pool.query(
-            'INSERT INTO empresas (contador_id, cnpj, razaosocial, emailempresa, senha) VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO empresas (contador_id, cnpj, razaosocial, emailempresa, senha, senhahash) VALUES ($1, $2, $3, $4, $5, $5)',
             [req.contadorId, cnpj, razaoSocial, emailEmpresa, senhaHash]
         );
 
