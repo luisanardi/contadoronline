@@ -140,30 +140,22 @@
             document.getElementById('modal-alerta').classList.add('hidden');
         }
 
-        // Função para buscar os dados da empresa automaticamente via API pública pelo CNPJ
         async function consultarCnpjAutomatico() {
             const inputCnpj = document.getElementById('empresa-cnpj');
             const inputRazao = document.getElementById('empresa-razao');
             const cnpjLimpo = inputCnpj.value.replace(/\D/g, '');
 
-            if (cnpjLimpo.length !== 14) {
-                return;
-            }
+            if (cnpjLimpo.length !== 14) return;
 
             inputRazao.value = 'Buscando dados na Receita...';
 
             try {
                 const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-                if (!resposta.ok) {
-                    throw new Error('CNPJ não encontrado');
-                }
+                if (!resposta.ok) throw new Error('CNPJ não encontrado');
                 const dados = await resposta.json();
-                
-                // Preenche a Razão Social automaticamente
                 inputRazao.value = dados.razao_social || dados.nome_fantasia || '';
             } catch (erro) {
                 inputRazao.value = '';
-                // Se falhar a consulta automática, deixa o campo livre para digitação manual
                 inputRazao.placeholder = 'Digite a Razão Social manualmente';
             }
         }
@@ -175,9 +167,7 @@
 
             try {
                 const resposta = await fetch('/api/empresas', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (resposta.status === 401) {
@@ -186,10 +176,7 @@
                 }
 
                 const empresas = await resposta.json();
-
-                if (!resposta.ok) {
-                    throw new Error(empresas.erro || 'Erro ao carregar empresas.');
-                }
+                if (!resposta.ok) throw new Error(empresas.erro || 'Erro ao carregar empresas.');
 
                 contadorBadge.textContent = `${empresas.length} ${empresas.length === 1 ? 'Empresa Cadastrada' : 'Empresas Cadastradas'}`;
 
@@ -216,10 +203,13 @@
                         <td class="py-4 px-6 font-medium text-white">${empresa.razaosocial}</td>
                         <td class="py-4 px-6 text-slate-400">${emailEmpresa}</td>
                         <td class="py-4 px-6 text-slate-400">${dataFormatada}</td>
-                        <td class="py-4 px-6 text-right">
-                            <a href="admin_upload.html?cnpj=${empresa.cnpj}" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 text-xs font-semibold transition-colors">
-                                <span>Gerenciar Guias</span>
+                        <td class="py-4 px-6 text-right space-x-2">
+                            <a href="admin_upload.html?cnpj=${empresa.cnpj}" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 text-xs font-semibold transition-colors">
+                                Gerenciar Guias
                             </a>
+                            <button onclick="deletarEmpresa('${empresa.id}', '${empresa.razaosocial}')" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-colors">
+                                Excluir
+                            </button>
                         </td>
                     `;
                     corpoTabela.appendChild(tr);
@@ -229,6 +219,27 @@
                 blocoErro.textContent = erro.message;
                 blocoErro.classList.remove('hidden');
                 contadorBadge.textContent = 'Erro';
+            }
+        }
+
+        // Função para excluir a empresa
+        async function deletarEmpresa(idEmpresa, razaoSocial) {
+            if (!confirm(`Deseja realmente excluir a empresa "${razaoSocial}"? Todas as guias vinculadas também serão removidas.`)) {
+                return;
+            }
+
+            try {
+                const resposta = await fetch(`/api/empresas/${idEmpresa}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const resultado = await resposta.json();
+                if (!resposta.ok) throw new Error(resultado.erro || 'Erro ao excluir empresa.');
+
+                carregarEmpresas();
+            } catch (erro) {
+                alert(erro.message);
             }
         }
 
@@ -252,10 +263,7 @@
                 });
 
                 const dados = await resposta.json();
-
-                if (!resposta.ok) {
-                    throw new Error(dados.erro || 'Erro ao cadastrar empresa.');
-                }
+                if (!resposta.ok) throw new Error(dados.erro || 'Erro ao cadastrar empresa.');
 
                 modalAlerta.textContent = dados.mensagem;
                 modalAlerta.className = 'mb-4 p-3 rounded-lg text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
@@ -269,7 +277,7 @@
             } catch (erro) {
                 modalAlerta.textContent = erro.message;
                 modalAlerta.className = 'mb-4 p-3 rounded-lg text-sm bg-red-500/10 border border-red-500/20 text-red-400';
-                modalAlerta.classList.remove('hidden');
+                modalALerta.classList.remove('hidden');
             }
         });
 
