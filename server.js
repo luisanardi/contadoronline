@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jwt-simple');
+const jwt = require('jsonwebtoken'); // Usando a biblioteca instalada
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -17,9 +17,7 @@ app.use(express.static(__dirname));
 // Configuração da conexão com o banco PostgreSQL no Render
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 // Chave secreta para JWT
@@ -48,16 +46,13 @@ app.post('/api/cadastrar-empresa', async (req, res) => {
     const cnpjLimpo = cnpj.replace(/\D/g, '');
 
     try {
-        // Verifica se o CNPJ já está cadastrado
         const empresaExistente = await pool.query('SELECT * FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
         if (empresaExistente.rows.length > 0) {
             return res.status(400).json({ erro: 'CNPJ já cadastrado no sistema.' });
         }
 
-        // Criptografa a senha antes de salvar no banco
         const senhaHash = await bcrypt.hash(senha, 10);
 
-        // Insere a nova empresa no banco PostgreSQL
         await pool.query(
             'INSERT INTO Empresas (CNPJ, RazaoSocial, SenhaHash) VALUES ($1, $2, $3)',
             [cnpjLimpo, razaoSocial, senhaHash]
@@ -90,7 +85,7 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ erro: 'CNPJ ou senha incorretos.' });
         }
 
-        const token = jwt.encode({ id: empresa.id, cnpj: empresa.cnpj }, JWT_SECRET);
+        const token = jwt.sign({ id: empresa.id, cnpj: empresa.cnpj }, JWT_SECRET, { expiresIn: '8h' });
 
         res.json({
             sucesso: true,
@@ -110,14 +105,15 @@ app.post('/api/login', async (req, res) => {
 // ROTA 2: BUSCAR IMPOSTOS DA EMPRESA (PAINEL)
 // ==========================================
 app.get('/api/meus-impostos', async (req, res) => {
-    const token = req.headers.authorization;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
         return res.status(401).json({ erro: 'Acesso não autorizado. Faça login novamente.' });
     }
 
     try {
-        const decoded = jwt.decode(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
         const result = await pool.query(
             'SELECT * FROM Tributos WHERE EmpresaID = $1 ORDER BY DataVencimento ASC',
             [decoded.id]
