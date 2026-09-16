@@ -23,6 +23,35 @@ const pool = new Pool({
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
+// Criar tabelas automaticamente caso não existam
+const initDB = async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS Empresas (
+                ID SERIAL PRIMARY KEY,
+                CNPJ VARCHAR(14) UNIQUE NOT NULL,
+                RazaoSocial VARCHAR(255) NOT NULL,
+                SenhaHash VARCHAR(255) NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS Tributos (
+                ID SERIAL PRIMARY KEY,
+                EmpresaID INT REFERENCES Empresas(ID),
+                TipoImposto VARCHAR(50) NOT NULL,
+                Competencia VARCHAR(7) NOT NULL,
+                Valor DECIMAL(10,2) NOT NULL,
+                DataVencimento DATE NOT NULL,
+                PixCopiaECola TEXT,
+                CaminhoPDF VARCHAR(255)
+            );
+        `);
+        console.log('Tabelas sincronizadas com sucesso no PostgreSQL!');
+    } catch (err) {
+        console.error('Erro ao inicializar tabelas do banco de dados:', err);
+    }
+};
+initDB();
+
 const CHAVE_SECRETA_JWT = process.env.JWT_SECRET || "sua_chave_secreta_super_segura";
 
 // Configuração para Salvamento de PDFs enviados pelo Contador
