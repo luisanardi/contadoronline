@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso do Contador - Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
+        
+        <!-- Cabeçalho -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 mb-4 text-2xl font-bold">
+                💼
+            </div>
+            <h1 id="titulo-pagina" class="text-2xl font-bold tracking-tight text-white">Área do Contador</h1>
+            <p id="subtitulo-pagina" class="text-sm text-slate-400 mt-1">Entre com sua conta para gerenciar seus clientes</p>
+        </div>
+
+        <!-- Alerta de Erro / Sucesso -->
+        <div id="mensagem-alerta" class="hidden mb-6 p-3 rounded-lg text-sm font-medium"></div>
+
+        <!-- Formulário de Login -->
+        <form id="form-login" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">E-mail de Acesso</label>
+                <input type="email" id="login-email" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="seu.email@escritorio.com">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Senha</label>
+                <input type="password" id="login-senha" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-blue-600/20">
+                Entrar no Painel
+            </button>
+        </form>
+
+        <!-- Formulário de Cadastro (Oculto Inicialmente) -->
+        <form id="form-cadastro" class="space-y-4 hidden">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nome do Escritório / Contador</label>
+                <input type="text" id="cad-nome" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="Ex: Contabilidade Silva">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">E-mail Profissional</label>
+                <input type="email" id="cad-email" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="contato@escritorio.com">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Criar Senha</label>
+                <input type="password" id="cad-senha" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-emerald-600/20">
+                Cadastrar Escritório
+            </button>
+        </form>
+
+        <!-- Alternador entre Login e Cadastro -->
+        <div class="mt-6 text-center">
+            <button id="btn-alternar" onclick="alternarModo()" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                Não tem uma conta? Cadastre seu escritório aqui
+            </button>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-slate-800 text-center">
+            <a href="index.html" class="text-xs text-slate-500 hover:text-slate-400 transition-colors">← Voltar para a Página Inicial</a>
+        </div>
+
+    </div>
+
+    <script>
+        let modoCadastro = false;
+
+        function alternarModo() {
+            modoCadastro = !modoCadastro;
+            const formLogin = document.getElementById('form-login');
+            const formCadastro = document.getElementById('form-cadastro');
+            const titulo = document.getElementById('titulo-pagina');
+            const subtitulo = document.getElementById('subtitulo-pagina');
+            const btnAlternar = document.getElementById('btn-alternar');
+            const alerta = document.getElementById('mensagem-alerta');
+
+            alerta.classList.add('hidden');
+
+            if (modoCadastro) {
+                formLogin.classList.add('hidden');
+                formCadastro.classList.remove('hidden');
+                titulo.textContent = 'Novo Escritório';
+                subtitulo.textContent = 'Cadastre-se para gerenciar seus clientes';
+                btnAlternar.textContent = 'Já tem uma conta? Faça login aqui';
+            } else {
+                formCadastro.classList.add('hidden');
+                formLogin.classList.remove('hidden');
+                titulo.textContent = 'Área do Contador';
+                subtitulo.textContent = 'Entre com sua conta para gerenciar seus clientes';
+                btnAlternar.textContent = "Não tem uma conta? Cadastre seu escritório aqui";
+            }
+        }
+
+        function mostrarAlerta(texto, tipo) {
+            const alerta = document.getElementById('mensagem-alerta');
+            alerta.textContent = texto;
+            alerta.classList.remove('hidden', 'bg-red-500/10', 'border-red-500/20', 'text-red-400', 'bg-emerald-500/10', 'border-emerald-500/20', 'text-emerald-400');
+            
+            if (tipo === 'erro') {
+                alerta.classList.add('bg-red-500/10', 'border', 'border-red-500/20', 'text-red-400');
+            } else {
+                alerta.classList.add('bg-emerald-500/10', 'border', 'border-emerald-500/20', 'text-emerald-400');
+            }
+        }
+
+        // Login
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const senha = document.getElementById('login-senha').value;
+
+            try {
+                const resposta = await fetch('/api/contador/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(dados.erro || 'Erro ao fazer login.');
+                }
+
+                // Salva o token do contador no localStorage
+                localStorage.setItem('tokenContador', dados.token);
+                localStorage.setItem('nomeEscritorio', dados.contador.nomeEscritorio);
+
+                window.location.href = 'admin.html';
+            } catch (erro) {
+                mostrarAlerta(erro.message, 'erro');
+            }
+        });
+
+        // Cadastro
+        document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nomeEscritorio = document.getElementById('cad-nome').value;
+            const email = document.getElementById('cad-email').value;
+            const senha = document.getElementById('cad-senha').value;
+
+            try {
+                const resposta = await fetch('/api/contador/cadastro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nomeEscritorio, email, senha })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(dados.erro || 'Erro ao cadastrar.');
+                }
+
+                mostrarAlerta(dados.mensagem, 'sucesso');
+                setTimeout(() => alternarModo(), 1500);
+            } catch (erro) {
+                mostrarAlerta(erro.message, 'erro');
+            }
+        });
+    </script>
+</body>
+</html>
