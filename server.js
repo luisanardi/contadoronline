@@ -140,7 +140,7 @@ app.post('/api/contador/cadastro', async (req, res) => {
     }
 });
 
-// Login de Contador (Garantindo que 'nomeEscritorio' seja retornado perfeitamente)
+// Login de Contador (Envia nomeEscritorio garantido para o front-end)
 app.post('/api/contador/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
