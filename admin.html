@@ -44,12 +44,13 @@
 
         <div class="input-group">
             <label for="tipoImposto">Tipo de Imposto</label>
-            <input type="text" id="tipoImposto" placeholder="Ex: DAS - Simples Nacional" required>
+            <input type="text" id="tipoImposto" placeholder="Ex: SIMPLES NACIONAL" required>
         </div>
 
         <div class="input-group">
             <label for="valor">Valor (R$)</label>
-            <input type="number" step="0.01" id="valor" placeholder="150.00" required>
+            <!-- Alterado para type="text" permitindo vírgulas -->
+            <input type="text" id="valor" placeholder="Ex: 15571,43" required>
         </div>
 
         <div class="input-group">
@@ -93,11 +94,15 @@
         btn.disabled = true;
         btn.textContent = 'Enviando...';
 
+        // Tratamento do valor: remove pontos de milhar e troca vírgula decimal por ponto para o banco
+        let valorBruto = document.getElementById('valor').value;
+        let valorTratado = valorBruto.replace(/\./g, '').replace(',', '.');
+
         const formData = new FormData();
         formData.append('cnpj', document.getElementById('cnpj').value);
         formData.append('mesReferencia', document.getElementById('mesReferencia').value);
         formData.append('tipoImposto', document.getElementById('tipoImposto').value);
-        formData.append('valor', document.getElementById('valor').value);
+        formData.append('valor', valorTratado);
         formData.append('dataVencimento', document.getElementById('dataVencimento').value);
         formData.append('codigoPix', document.getElementById('codigoPix').value);
         
