@@ -32,15 +32,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
-// Inicialização e criação de tabelas automáticas no PostgreSQL
+// Inicialização e atualização forçada das colunas e tabelas no PostgreSQL
 async function iniciarBanco() {
     try {
+        // 1. Cria as tabelas básicas se não existirem
         await pool.query(`
             CREATE TABLE IF NOT EXISTS contadores (
                 id SERIAL PRIMARY KEY,
-                nomeescritorio VARCHAR(255) NOT NULL,
+                nomeescritorio VARCHAR(255),
                 email VARCHAR(255) UNIQUE NOT NULL,
-                senha VARCHAR(255) NOT NULL,
+                senha VARCHAR(255),
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -68,7 +69,16 @@ async function iniciarBanco() {
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Tabelas verificadas, migradas e sincronizadas com sucesso no PostgreSQL!");
+
+        // 2. Força a adição de colunas caso a tabela antiga já exista sem elas
+        await pool.query(`
+            ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
+            ALTER TABLE contadores ADD COLUMN IF NOT EXISTS nomeescritorio VARCHAR(255);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
+        `);
+
+        console.log("Banco de dados sincronizado e colunas verificadas com sucesso!");
     } catch (erro) {
         console.error("Erro ao inicializar o banco de dados:", erro);
     }
@@ -137,6 +147,12 @@ app.post('/api/contador/login', async (req, res) => {
         }
 
         const contador = resultado.rows[0];
+        
+        // Garante que o contador antigo possui senha cadastrada
+        if (!contador.senha) {
+            return res.status(400).json({ erro: 'Esta conta antiga não possui senha definida. Por favor, cadastre um novo escritório.' });
+        }
+
         const senhaValida = await bcrypt.compare(senha, contador.senha);
 
         if (!senhaValida) {
@@ -170,7 +186,7 @@ app.get('/api/empresas', verificarToken, async (req, res) => {
     }
 });
 
-// Cadastrar Empresa pelo Painel (com disparo de e-mail e senha em asteriscos)
+// Cadastrar Empresa pelo Painel
 app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     try {
         const { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
@@ -185,7 +201,6 @@ app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
             [req.contadorId, cnpj, razaoSocial, emailEmpresa, senhaHash]
         );
 
-        // Disparar e-mail de aviso se o e-mail da empresa foi preenchido
         if (emailEmpresa && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             const senhaMascarada = '•'.repeat(senha.length);
             const linkPortal = `https://${req.get('host')}/index.html`;
@@ -244,7 +259,6 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
 
 // ==================== ROTAS DE GUIAS ====================
 
-// Enviar Guia em PDF vinculada a uma empresa
 app.post('/api/guias', verificarToken, upload.single('arquivoPdf'), async (req, res) => {
     try {
         const { cnpj, tipoImposto, competencia, valor, vencimento, pix } = req.body;
