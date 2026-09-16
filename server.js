@@ -126,6 +126,10 @@ app.post('/api/contador/cadastro', async (req, res) => {
 app.post('/api/contador/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
+        if (!email || !senha) {
+            return res.status(400).json({ erro: 'Preencha o e-mail e a senha.' });
+        }
+
         const resultado = await pool.query('SELECT * FROM contadores WHERE email = $1', [email]);
 
         if (resultado.rows.length === 0) {
@@ -222,7 +226,6 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Garante que a empresa pertence ao contador logado antes de excluir
         const empresa = await pool.query('SELECT * FROM empresas WHERE id = $1 AND contador_id = $2', [id, req.contadorId]);
         if (empresa.rows.length === 0) {
             return res.status(404).json({ erro: 'Empresa não encontrada.' });
@@ -230,10 +233,7 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
 
         const cnpj = empresa.rows[0].cnpj;
 
-        // Deleta as guias da empresa
         await pool.query('DELETE FROM guias WHERE cnpj = $1', [cnpj]);
-        
-        // Deleta a empresa
         await pool.query('DELETE FROM empresas WHERE id = $1', [id]);
 
         res.json({ mensagem: 'Empresa excluída com sucesso!' });
@@ -254,7 +254,6 @@ app.post('/api/guias', verificarToken, upload.single('arquivoPdf'), async (req, 
             return res.status(400).json({ erro: 'Preencha todos os campos obrigatórios e envie o PDF.' });
         }
 
-        // Converte o valor recebido (tratado no front para formato americano ex: 15365.21) para float
         const valorTratado = parseFloat(valor);
 
         await pool.query(
