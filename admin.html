@@ -88,12 +88,12 @@
 
             <form id="form-cadastrar-empresa" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">CNPJ</label>
-                    <input type="text" id="empresa-cnpj" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500" placeholder="00.000.000/0001-00">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">CNPJ (Consulta Automática)</label>
+                    <input type="text" id="empresa-cnpj" required onblur="consultarCnpjAutomatico()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500" placeholder="00.000.000/0001-00">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Razão Social</label>
-                    <input type="text" id="empresa-razao" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500" placeholder="Nome da Empresa LTDA">
+                    <input type="text" id="empresa-razao" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500" placeholder="Preenchido automaticamente ao digitar o CNPJ">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">E-mail da Empresa (para receber os dados)</label>
@@ -113,7 +113,6 @@
     </div>
 
     <script>
-        // Validação e recuperação segura do token
         const token = localStorage.getItem('tokenContador');
         const nomeEscritorio = localStorage.getItem('nomeEscritorio');
 
@@ -139,6 +138,34 @@
             document.getElementById('modal-cadastro').classList.add('hidden');
             document.getElementById('form-cadastrar-empresa').reset();
             document.getElementById('modal-alerta').classList.add('hidden');
+        }
+
+        // Função para buscar os dados da empresa automaticamente via API pública pelo CNPJ
+        async function consultarCnpjAutomatico() {
+            const inputCnpj = document.getElementById('empresa-cnpj');
+            const inputRazao = document.getElementById('empresa-razao');
+            const cnpjLimpo = inputCnpj.value.replace(/\D/g, '');
+
+            if (cnpjLimpo.length !== 14) {
+                return;
+            }
+
+            inputRazao.value = 'Buscando dados na Receita...';
+
+            try {
+                const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+                if (!resposta.ok) {
+                    throw new Error('CNPJ não encontrado');
+                }
+                const dados = await resposta.json();
+                
+                // Preenche a Razão Social automaticamente
+                inputRazao.value = dados.razao_social || dados.nome_fantasia || '';
+            } catch (erro) {
+                inputRazao.value = '';
+                // Se falhar a consulta automática, deixa o campo livre para digitação manual
+                inputRazao.placeholder = 'Digite a Razão Social manualmente';
+            }
         }
 
         async function carregarEmpresas() {
@@ -205,7 +232,6 @@
             }
         }
 
-        // Submissão do formulário de cadastro de empresa direto na página
         document.getElementById('form-cadastrar-empresa').addEventListener('submit', async (e) => {
             e.preventDefault();
             const modalAlerta = document.getElementById('modal-alerta');
