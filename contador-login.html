@@ -67,7 +67,7 @@
 
         <!-- Alternador entre Login e Cadastro -->
         <div class="mt-6 text-center">
-            <button id="btn-alternar" onclick="alternarModo()" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
+            <button id="btn-alternar" type="button" onclick="alternarModo()" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
                 Não tem uma conta? Cadastre seu escritório aqui
             </button>
         </div>
@@ -138,9 +138,11 @@
                     throw new Error(dados.erro || 'Erro ao fazer login.');
                 }
 
-                // Salva o token do contador no localStorage
+                // Salva o token e o nome do escritório de forma segura (pegando de qualquer formato que o servidor mandar)
+                const nomeEscritorioSalvar = dados.nomeEscritorio || dados.nome_escritorio || (dados.contador && dados.contador.nomeEscritorio) || 'Escritório';
+
                 localStorage.setItem('tokenContador', dados.token);
-                localStorage.setItem('nomeEscritorio', dados.contador.nomeEscritorio);
+                localStorage.setItem('nomeEscritorio', nomeEscritorioSalvar);
 
                 window.location.href = 'admin.html';
             } catch (erro) {
