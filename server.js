@@ -33,15 +33,16 @@ app.post('/api/contador/cadastro', async (req, res) => {
 
         const usuarioExiste = await pool.query('SELECT * FROM contadores WHERE LOWER(email) = $1', [email]);
         if (usuarioExiste.rows.length > 0) {
-            return res.status(400).json({ erro: 'Este e-mail já está cadastrado.' });
+            return res.status(400).json({ erro: 'Este e-mail já está cadastrado. Faça login ou recupere a senha.' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(senha, salt);
 
+        // Insere preenchendo tanto 'senha' quanto 'senhahash' para evitar qualquer restrição do banco
         await pool.query(
-            'INSERT INTO contadores (nomeescritorio, email, senha) VALUES ($1, $2, $3)',
-            [nomeEscritorio, email, senhaHash]
+            'INSERT INTO contadores (nomeescritorio, email, senha, senhahash) VALUES ($1, $2, $3, $4)',
+            [nomeEscritorio, email, senhaHash, senhaHash]
         );
 
         res.status(201).json({ mensagem: 'Cadastro realizado com sucesso!' });
@@ -68,7 +69,7 @@ app.post('/api/contador/login', async (req, res) => {
         }
 
         const contador = resultado.rows[0];
-        const senhaArmazenada = contador.senha || contador.senhahash;
+        const senhaArmazenada = contador.senhahash || contador.senha;
 
         if (!senhaArmazenada) {
             return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
@@ -85,10 +86,8 @@ app.post('/api/contador/login', async (req, res) => {
             mensagem: 'Login realizado com sucesso!',
             token: token,
             nomeEscritorio: contador.nomeescritorio || 'Escritório',
-            nome_escritorio: contador.nomeescritorio || 'Escritório',
             contador: {
-                nomeEscritorio: contador.nomeescritorio || 'Escritório',
-                nome_escritorio: contador.nomeescritorio || 'Escritório'
+                nomeEscritorio: contador.nomeescritorio || 'Escritório'
             }
         });
     } catch (erro) {
@@ -111,9 +110,10 @@ app.post('/api/contador/esqueci-senha', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(novaSenha, salt);
 
+        // Atualiza ambas as colunas para garantir compatibilidade total
         const atualizacao = await pool.query(
-            'UPDATE contadores SET senha = $1 WHERE LOWER(email) = $2',
-            [senhaHash, email]
+            'UPDATE contadores SET senha = $1, senhahash = $2 WHERE LOWER(email) = $3',
+            [senhaHash, senhaHash, email]
         );
 
         if (atualizacao.rowCount === 0) {
