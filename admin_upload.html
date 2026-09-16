@@ -1,159 +1,157 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Contador - Envio de Impostos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>Gerenciar Guias - Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background-color: #f1f5f9; color: #0f172a; padding: 40px 20px; }
-        .container { max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .header { margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
-        .header h1 { font-size: 22px; font-weight: 700; color: #1e293b; }
-        .header p { font-size: 14px; color: #64748b; margin-top: 4px; }
-        
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .full-width { grid-column: span 2; }
-
-        .input-group { margin-bottom: 16px; }
-        .input-group label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
-        .input-group input, .input-group select, .input-group textarea { 
-            width: 100%; 
-            padding: 10px 12px; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 6px; 
-            font-size: 14px; 
-            outline: none; 
-            transition: border 0.2s; 
-        }
-        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #2563eb; }
-
-        /* Estilo da Área de Soltar Arquivo (Drag and Drop) */
-        .upload-box { 
-            border: 2px dashed #cbd5e1; 
-            border-radius: 8px; 
-            padding: 24px; 
-            text-align: center; 
-            background: #f8fafc; 
-            cursor: pointer; 
-            transition: background 0.2s; 
-        }
-        .upload-box:hover { background: #f1f5f9; border-color: #2563eb; }
-        .upload-box i { color: #64748b; margin-bottom: 8px; }
-        .upload-box p { font-size: 13px; color: #64748b; }
-
-        .btn-submit { 
-            width: 100%; 
-            padding: 12px; 
-            background-color: #059669; 
-            color: #ffffff; 
-            border: none; 
-            border-radius: 6px; 
-            font-size: 15px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            gap: 8px; 
-            margin-top: 10px; 
-        }
-        .btn-submit:hover { background-color: #047857; }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
-<div class="container">
-    <div class="header">
-        <h1>Área de Publicação de Impostos</h1>
-        <p>Vincule guias de pagamento aos clientes via CNPJ.</p>
-    </div>
-
-    <form action="/api/tributos/publicar" method="POST" enctype="multipart/form-data">
-        <div class="form-grid">
-            <!-- CNPJ da Empresa -->
-            <div class="input-group full-width">
-                <label for="cnpj">CNPJ do Cliente</label>
-                <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required onkeyup="mascaraCNPJ(this)">
-            </div>
-
-            <!-- Tipo de Imposto -->
-            <div class="input-group">
-                <label for="tipoImposto">Tipo de Imposto</label>
-                <select id="tipoImposto" name="tipoImposto" required>
-                    <option value="">Selecione...</option>
-                    <option value="DAS">DAS (Simples Nacional)</option>
-                    <option value="DARF">DARF</option>
-                    <option value="GPS">GPS (INSS)</option>
-                    <option value="ISS">ISS Homologado</option>
-                    <option value="ICMS">ICMS</option>
-                    <option value="OUTROS">Outras Taxas</option>
-                </select>
-            </div>
-
-            <!-- Competência -->
-            <div class="input-group">
-                <label for="competencia">Competência (Mês/Ano)</label>
-                <input type="text" id="competencia" name="competencia" placeholder="09/2026" maxlength="7" required>
-            </div>
-
-            <!-- Valor (R$) -->
-            <div class="input-group">
-                <label for="valor">Valor do Imposto (R$)</label>
-                <input type="number" step="0.01" id="valor" name="valor" placeholder="0,00" required>
-            </div>
-
-            <!-- Vencimento -->
-            <div class="input-group">
-                <label for="vencimento">Data de Vencimento</label>
-                <input type="date" id="vencimento" name="vencimento" required>
-            </div>
-
-            <!-- Código PIX Copia e Cola -->
-            <div class="input-group full-width">
-                <label for="pix">PIX Copia e Cola (Opcional)</label>
-                <textarea id="pix" name="pix" rows="2" placeholder="00020126360014BR.GOV.BCB.PIX..."></textarea>
-            </div>
-
-            <!-- Upload do PDF -->
-            <div class="input-group full-width">
-                <label>Arquivo PDF da Guia</label>
-                <div class="upload-box" onclick="document.getElementById('pdf_file').click()">
-                    <i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>
-                    <p id="file-name">Clique para selecionar ou arraste o PDF do imposto aqui</p>
-                    <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf" style="display: none;" required onchange="atualizarNomeArquivo(this)">
+    <!-- Topo / Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-lg">
+                    📁
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-tight">Gerenciamento de Guias</h1>
+                    <p id="cnpj-empresa-topo" class="text-xs font-semibold text-yellow-400 mt-0.5">Carregando empresa...</p>
                 </div>
             </div>
+            
+            <a href="admin.html" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors border border-slate-700">
+                <span>← Voltar ao Painel</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="max-w-4xl mx-auto px-6 py-10">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl">
+            <h2 class="text-xl font-bold text-white mb-2">Vincular Nova Guia</h2>
+            <p class="text-sm text-slate-400 mb-6">Envie o arquivo PDF da guia e preencha os dados de cobrança para o cliente.</p>
+
+            <div id="mensagem-alerta" class="hidden mb-6 p-4 rounded-xl text-sm"></div>
+
+            <form id="form-upload-guia" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Tipo de Imposto</label>
+                        <select id="tipoImposto" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+                            <option value="DAS">DAS (Simples Nacional)</option>
+                            <option value="DARF">DARF</option>
+                            <option value="GPS">GPS</option>
+                            <option value="ISS">ISS</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Competência (Mês/Ano)</label>
+                        <input type="text" id="competencia" required placeholder="Ex: 10/2026" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Valor do Imposto (R$)</label>
+                        <!-- Campo ajustado para aceitar vírgula e ponto livremente -->
+                        <input type="text" id="valor" required placeholder="Ex: 15,25 ou 15.25" oninput="this.value = this.value.replace(',', '.')" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Data de Vencimento</label>
+                        <input type="date" id="vencimento" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">PIX Copia e Cola (Opcional)</label>
+                    <textarea id="pix" rows="2" placeholder="00020126360014BR.GOV.BCB.PIX..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono text-xs"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Arquivo da Guia (PDF)</label>
+                    <input type="file" id="arquivoPdf" accept="application/pdf" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-800">
+                    <button type="submit" id="btn-enviar" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-blue-600/25">
+                        Enviar e Vincular Guia
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <button type="submit" class="btn-submit">
-            <i data-lucide="send"></i> Disponibilizar Guia para o Cliente
-        </button>
-    </form>
-</div>
+    </main>
 
-<script>
-    lucide.createIcons();
+    <script>
+        const token = localStorage.getItem('tokenContador');
+        const urlParams = new URLSearchParams(window.location.search);
+        const cnpjEmpresa = urlParams.get('cnpj');
 
-    function mascaraCNPJ(v) {
-        v.value = v.value.replace(/\D/g, "");
-        v.value = v.value.replace(/^(\d{2})(\d)/, "$1.$2");
-        v.value = v.value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-        v.value = v.value.replace(/\.(\d{3})(\d)/, ".$1/$2");
-        v.value = v.value.replace(/(\d{4})(\d)/, "$1-$2");
-    }
-
-    function atualizarNomeArquivo(input) {
-        const fileNameText = document.getElementById('file-name');
-        if (input.files && input.files[0]) {
-            fileNameText.textContent = `Arquivo selecionado: ${input.files[0].name}`;
-            fileNameText.style.color = '#2563eb';
-            fileNameText.style.fontWeight = '600';
+        if (!token || !cnpjEmpresa) {
+            window.location.href = 'admin.html';
         }
-    }
-</script>
 
+        document.getElementById('cnpj-empresa-topo').textContent = `Empresa CNPJ: ${cnpjEmpresa}`;
+
+        document.getElementById('form-upload-guia').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnEnviar = document.getElementById('btn-enviar');
+            const alerta = document.getElementById('mensagem-alerta');
+
+            btnEnviar.textContent = 'Enviando arquivo...';
+            btnEnviar.disabled = true;
+
+            const formData = new FormData();
+            formData.append('cnpj', cnpjEmpresa);
+            formData.append('tipoImposto', document.getElementById('tipoImposto').value);
+            formData.append('competencia', document.getElementById('competencia').value);
+            formData.append('valor', document.getElementById('valor').value);
+            formData.append('vencimento', document.getElementById('vencimento').value);
+            formData.append('pix', document.getElementById('pix').value);
+            formData.append('arquivoPdf', document.getElementById('arquivoPdf').files[0]);
+
+            try {
+                const resposta = await fetch('/api/guias', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(resultado.erro || 'Erro ao enviar guia.');
+                }
+
+                alerta.textContent = 'Guia cadastrada e enviada com sucesso!';
+                alerta.className = 'mb-6 p-4 rounded-xl text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+                alerta.classList.remove('hidden');
+
+                document.getElementById('form-upload-guia').reset();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } catch (erro) {
+                alerta.textContent = erro.message;
+                alerta.className = 'mb-6 p-4 rounded-xl text-sm bg-red-500/10 border border-red-500/20 text-red-400';
+                alerta.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } finally {
+                btnEnviar.textContent = 'Enviar e Vincular Guia';
+                btnEnviar.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
