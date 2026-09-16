@@ -49,7 +49,7 @@ async function iniciarBanco() {
             CREATE TABLE IF NOT EXISTS empresas (
                 id SERIAL PRIMARY KEY,
                 contador_id INTEGER REFERENCES contadores(id) ON DELETE CASCADE,
-                cnpj VARCHAR(20) UNIQUE NOT NULL,
+                cnpj VARCHAR(30) UNIQUE NOT NULL,
                 razaosocial VARCHAR(255) NOT NULL,
                 emailempresa VARCHAR(255),
                 senha VARCHAR(255) NOT NULL,
@@ -58,7 +58,7 @@ async function iniciarBanco() {
 
             CREATE TABLE IF NOT EXISTS guias (
                 id SERIAL PRIMARY KEY,
-                cnpj VARCHAR(20) NOT NULL,
+                cnpj VARCHAR(30) NOT NULL,
                 tipoimposto VARCHAR(50) NOT NULL,
                 competencia VARCHAR(20) NOT NULL,
                 valor NUMERIC(12, 2) NOT NULL,
@@ -71,16 +71,22 @@ async function iniciarBanco() {
             );
         `);
 
-        // Força a adição de colunas caso a tabela já exista e esteja desatualizada
+        // Força a atualização de tamanhos e colunas para aceitar hashes de senha longos e máscaras de CNPJ
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS nomeescritorio VARCHAR(255);
+            ALTER TABLE contadores ALTER COLUMN senha TYPE VARCHAR(255);
+            ALTER TABLE contadores ALTER COLUMN senhahash TYPE VARCHAR(255);
             
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS contador_id INTEGER;
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS emailempresa VARCHAR(255);
+            ALTER TABLE empresas ALTER COLUMN senha TYPE VARCHAR(255);
+            ALTER TABLE empresas ALTER COLUMN cnpj TYPE VARCHAR(30);
+
+            ALTER TABLE guias ALTER COLUMN cnpj TYPE VARCHAR(30);
         `);
 
         console.log("Banco de dados sincronizado e colunas atualizadas com sucesso!");
@@ -200,11 +206,12 @@ app.get('/api/empresas', verificarToken, async (req, res) => {
 
 app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     try {
-        const { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
+        let { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
         if (!cnpj || !razaoSocial || !senha) {
             return res.status(400).json({ erro: 'Preencha os campos obrigatórios.' });
         }
 
+        cnpj = cnpj.trim();
         const senhaHash = await bcrypt.hash(senha, 10);
 
         await pool.query(
@@ -271,13 +278,14 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
 
 app.post('/api/guias', verificarToken, upload.single('arquivoPdf'), async (req, res) => {
     try {
-        const { cnpj, tipoImposto, competencia, valor, vencimento, pix } = req.body;
+        let { cnpj, tipoImposto, competencia, valor, vencimento, pix } = req.body;
         const arquivo = req.file;
 
         if (!cnpj || !tipoImposto || !competencia || !valor || !vencimento || !arquivo) {
             return res.status(400).json({ erro: 'Preencha todos os campos obrigatórios e envie o PDF.' });
         }
 
+        cnpj = cnpj.trim();
         const valorTratado = parseFloat(valor);
 
         await pool.query(
