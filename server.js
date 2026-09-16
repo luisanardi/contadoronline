@@ -35,6 +35,7 @@ app.use(express.static(path.join(__dirname)));
 // Inicialização e atualização automática das tabelas e colunas no PostgreSQL
 async function iniciarBanco() {
     try {
+        // Garante que as tabelas existam primeiro
         await pool.query(`
             CREATE TABLE IF NOT EXISTS contadores (
                 id SERIAL PRIMARY KEY,
@@ -70,15 +71,18 @@ async function iniciarBanco() {
             );
         `);
 
+        // Força a adição de colunas em tabelas que já existiam sem elas
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS nomeescritorio VARCHAR(255);
+            
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS emailempresa VARCHAR(255);
         `);
 
-        console.log("Banco de dados sincronizado com sucesso!");
+        console.log("Banco de dados sincronizado e colunas atualizadas com sucesso!");
     } catch (erro) {
         console.error("Erro ao inicializar o banco de dados:", erro);
     }
@@ -140,7 +144,7 @@ app.post('/api/contador/cadastro', async (req, res) => {
     }
 });
 
-// Login de Contador (Envia nomeEscritorio garantido para o front-end)
+// Login de Contador
 app.post('/api/contador/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
