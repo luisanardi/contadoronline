@@ -11,15 +11,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Libera todos os arquivos HTML, CSS e JS para a web
+// Serve os arquivos estáticos (HTML, CSS, JS) da raiz
 app.use(express.static(__dirname));
 
-// Garante que a raiz do site abra o index.html
+// ROTA PRINCIPAL: Abre o index.html na raiz do site
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Garante que as pastas de upload existam no servidor
+// Garante que a pasta de uploads exista
 const uploadDir = path.join(__dirname, 'uploads', 'guias');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -31,7 +31,7 @@ const pool = new Pool({
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Criar tabelas automaticamente caso não existam
+// Inicialização automática das tabelas
 const initDB = async () => {
     try {
         await pool.query(`
@@ -55,26 +55,23 @@ const initDB = async () => {
         `);
         console.log('Tabelas sincronizadas com sucesso no PostgreSQL!');
     } catch (err) {
-        console.error('Erro ao inicializar tabelas do banco de dados:', err);
+        console.error('Erro ao inicializar tabelas:', err);
     }
 };
 initDB();
 
 const CHAVE_SECRETA_JWT = process.env.JWT_SECRET || "sua_chave_secreta_super_segura";
 
-// Configuração para Salvamento de PDFs enviados pelo Contador
+// Configuração de Uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
 
-// Servir a pasta de uploads para download seguro dos PDFs
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ==========================================
-// ROTA 1: LOGIN DA EMPRESA (CLIENTE)
-// ==========================================
+// ROTA 1: LOGIN DA EMPRESA
 app.post('/api/login', async (req, res) => {
     const { cnpj, senha } = req.body;
     if (!cnpj || !senha) return res.status(400).json({ erro: 'CNPJ e senha são obrigatórios.' });
@@ -109,17 +106,15 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ==========================================
-// ROTA 2: PAINEL DO CLIENTE (LISTAR IMPOSTOS)
-// ==========================================
+// ROTA 2: MEUS IMPOSTOS (CLIENTE)
 app.get('/api/meus-impostos', async (req, res) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) return res.status(401).json({ erro: 'Acesso negado. Token não fornecido.' });
+    if (!token) return res.status(401).json({ erro: 'Acesso negado.' });
 
     jwt.verify(token, CHAVE_SECRETA_JWT, async (err, decoded) => {
-        if (err) return res.status(403).json({ erro: 'Sessão expirada ou inválida.' });
+        if (err) return res.status(403).json({ erro: 'Sessão expirada.' });
 
         try {
             const tributos = await pool.query(
@@ -133,9 +128,7 @@ app.get('/api/meus-impostos', async (req, res) => {
     });
 });
 
-// ==========================================
-// ROTA 3: ENVIO DE GUIA PELO CONTADOR (ADMIN)
-// ==========================================
+// ROTA 3: PUBLICAR GUIA (ADMIN)
 app.post('/api/tributos/publicar', upload.single('pdf_file'), async (req, res) => {
     const { cnpj, tipoImposto, competencia, valor, vencimento, pix } = req.body;
     if (!cnpj) return res.status(400).json({ erro: 'CNPJ é obrigatório.' });
@@ -156,12 +149,12 @@ app.post('/api/tributos/publicar', upload.single('pdf_file'), async (req, res) =
         `;
         await pool.query(sql, [empresaId, tipoImposto, competencia, valor, vencimento, pix, caminhoPDF]);
 
-        res.status(201).json({ mensagem: 'Guia cadastrada e disponibilizada com sucesso!' });
+        res.status(201).json({ mensagem: 'Guia cadastrada com sucesso!' });
     } catch (err) {
-        res.status(500).json({ erro: 'Erro ao salvar a guia de imposto.' });
+        res.status(500).json({ erro: 'Erro ao salvar a guia.' });
     }
 });
 
-// Porta dinâmica para o Render
+// Inicialização da porta
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API executando na porta ${PORT}`));
