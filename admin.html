@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Contador - Publicar Imposto</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #f8fafc; color: #0f172a; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .card { background: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); width: 100%; max-width: 500px; }
+        h2 { font-size: 24px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        p.subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; transition: all 0.2s; }
+        input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+        .btn-submit { width: 100%; padding: 14px; background-color: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+        .btn-submit:hover { background-color: #1d4ed8; }
+        .alert { display: none; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-error { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Painel do Contador</h2>
+    <p class="subtitle">Publique guias e tributos para as empresas cadastradas.</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="formImposto" onsubmit="publicarGuia(event)">
+        <div class="input-group">
+            <label for="cnpj">CNPJ da Empresa</label>
+            <input type="text" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required onkeyup="mascaraCNPJ(this)">
+        </div>
+
+        <div class="input-group">
+            <label for="mesReferencia">Competência / Mês de Referência</label>
+            <input type="text" id="mesReferencia" placeholder="Ex: 08/2026" required>
+        </div>
+
+        <div class="input-group">
+            <label for="tipoImposto">Tipo de Imposto</label>
+            <input type="text" id="tipoImposto" placeholder="Ex: DAS - Simples Nacional" required>
+        </div>
+
+        <div class="input-group">
+            <label for="valor">Valor (R$)</label>
+            <input type="number" step="0.01" id="valor" placeholder="150.00" required>
+        </div>
+
+        <div class="input-group">
+            <label for="dataVencimento">Data de Vencimento</label>
+            <input type="date" id="dataVencimento" required>
+        </div>
+
+        <div class="input-group">
+            <label for="codigoPix">Código PIX (Copia e Cola)</label>
+            <input type="text" id="codigoPix" placeholder="00020126580014br.gov.bcb.pix...">
+        </div>
+
+        <div class="input-group">
+            <label for="arquivoPdf">Arquivo PDF da Guia</label>
+            <input type="file" id="arquivoPdf" accept="application/pdf">
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnSubmit">Publicar Guia</button>
+    </form>
+</div>
+
+<script>
+    function mascaraCNPJ(v) {
+        v.value = v.value.replace(/\D/g, "");
+        v.value = v.value.replace(/^(\d{2})(\d)/, "$1.$2");
+        v.value = v.value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+        v.value = v.value.replace(/\.(\d{3})(\d)/, ".$1/$2");
+        v.value = v.value.replace(/(\d{4})(\d)/, "$1-$2");
+    }
+
+    function showAlert(msg, tipo) {
+        const box = document.getElementById('alertBox');
+        box.textContent = msg;
+        box.className = `alert alert-${tipo}`;
+        box.style.display = 'block';
+    }
+
+    async function publicarGuia(event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnSubmit');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        const formData = new FormData();
+        formData.append('cnpj', document.getElementById('cnpj').value);
+        formData.append('mesReferencia', document.getElementById('mesReferencia').value);
+        formData.append('tipoImposto', document.getElementById('tipoImposto').value);
+        formData.append('valor', document.getElementById('valor').value);
+        formData.append('dataVencimento', document.getElementById('dataVencimento').value);
+        formData.append('codigoPix', document.getElementById('codigoPix').value);
+        
+        const arquivo = document.getElementById('arquivoPdf').files[0];
+        if (arquivo) formData.append('arquivoPdf', arquivo);
+
+        try {
+            const response = await fetch('/api/tributos/publicar', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('Guia publicada com sucesso para a empresa!', 'success');
+                document.getElementById('formImposto').reset();
+            } else {
+                showAlert(data.erro || 'Erro ao publicar guia.', 'error');
+            }
+        } catch (error) {
+            showAlert('Erro de conexão com o servidor.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Publicar Guia';
+        }
+    }
+</script>
+
+</body>
+</html>
