@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // Usando a biblioteca instalada
+const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Serve os arquivos estáticos (HTML, CSS, JS) da raiz
+// Serve os arquivos estáticos da raiz
 app.use(express.static(__dirname));
 
 // Configuração da conexão com o banco PostgreSQL no Render
@@ -20,22 +20,15 @@ const pool = new Pool({
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Chave secreta para JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'chave_secreta_padrao_contador';
-
-// Configuração do Multer para upload de arquivos
 const upload = multer({ dest: 'uploads/' });
 
-// ==========================================
-// ROTA MAIN: Abre o index.html na raiz do site
-// ==========================================
+// Rota Principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ==========================================
-// ROTA 0: CADASTRO DE EMPRESA
-// ==========================================
+// Cadastro de Empresa
 app.post('/api/cadastrar-empresa', async (req, res) => {
     const { cnpj, razaoSocial, senha } = req.body;
 
@@ -46,7 +39,7 @@ app.post('/api/cadastrar-empresa', async (req, res) => {
     const cnpjLimpo = cnpj.replace(/\D/g, '');
 
     try {
-        const empresaExistente = await pool.query('SELECT * FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
+        const empresaExistente = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
         if (empresaExistente.rows.length > 0) {
             return res.status(400).json({ erro: 'CNPJ já cadastrado no sistema.' });
         }
@@ -54,7 +47,7 @@ app.post('/api/cadastrar-empresa', async (req, res) => {
         const senhaHash = await bcrypt.hash(senha, 10);
 
         await pool.query(
-            'INSERT INTO Empresas (CNPJ, RazaoSocial, SenhaHash) VALUES ($1, $2, $3)',
+            'INSERT INTO empresas (cnpj, razaosocial, senhahash) VALUES ($1, $2, $3)',
             [cnpjLimpo, razaoSocial, senhaHash]
         );
 
@@ -65,15 +58,13 @@ app.post('/api/cadastrar-empresa', async (req, res) => {
     }
 });
 
-// ==========================================
-// ROTA 1: LOGIN DA EMPRESA
-// ==========================================
+// Login da Empresa
 app.post('/api/login', async (req, res) => {
     const { cnpj, senha } = req.body;
     const cnpjLimpo = cnpj ? cnpj.replace(/\D/g, '') : '';
 
     try {
-        const result = await pool.query('SELECT * FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
+        const result = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
         if (result.rows.length === 0) {
             return res.status(401).json({ erro: 'CNPJ ou senha incorretos.' });
         }
@@ -101,9 +92,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ==========================================
-// ROTA 2: BUSCAR IMPOSTOS DA EMPRESA (PAINEL)
-// ==========================================
+// Buscar Impostos da Empresa (Painel)
 app.get('/api/meus-impostos', async (req, res) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -115,7 +104,7 @@ app.get('/api/meus-impostos', async (req, res) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const result = await pool.query(
-            'SELECT * FROM Tributos WHERE EmpresaID = $1 ORDER BY DataVencimento ASC',
+            'SELECT * FROM tributos WHERE empresaid = $1 ORDER BY datavencimento ASC',
             [decoded.id]
         );
 
@@ -126,29 +115,22 @@ app.get('/api/meus-impostos', async (req, res) => {
     }
 });
 
-// ==========================================
-// ROTA 3: PUBLICAR GUIA DE IMPOSTO (PAINEL ADMIN)
-// ==========================================
+// Publicar Guia de Imposto (Painel Admin)
 app.post('/api/tributos/publicar', upload.single('arquivoPdf'), async (req, res) => {
     const { cnpj, mesReferencia, tipoImposto, valor, dataVencimento, codigoPix } = req.body;
-
     const cnpjLimpo = cnpj ? cnpj.replace(/\D/g, '') : '';
 
     try {
-        const empresaResult = await pool.query('SELECT id FROM Empresas WHERE CNPJ = $1', [cnpjLimpo]);
+        const empresaResult = await pool.query('SELECT id FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
         if (empresaResult.rows.length === 0) {
             return res.status(404).json({ erro: 'Empresa com este CNPJ não foi encontrada.' });
         }
 
         const empresaId = empresaResult.rows[0].id;
-        let caminhoPdf = null;
-
-        if (req.file) {
-            caminhoPdf = req.file.path;
-        }
+        let caminhoPdf = req.file ? req.file.path : null;
 
         await pool.query(
-            `INSERT INTO Tributos (EmpresaID, MesReferencia, TipoImposto, Valor, DataVencimento, CodigoPix, CaminhoPDF)
+            `INSERT INTO tributos (empresaid, mesreferencia, tipoimposto, valor, datavencimento, codigopix, caminhopdf)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [empresaId, mesReferencia, tipoImposto, valor, dataVencimento, codigoPix, caminhoPdf]
         );
@@ -160,31 +142,29 @@ app.post('/api/tributos/publicar', upload.single('arquivoPdf'), async (req, res)
     }
 });
 
-// ==========================================
-// CRIAÇÃO AUTOMÁTICA DAS TABELAS NO BANCO
-// ==========================================
+// Criação Automática e Limpa das Tabelas
 const initDatabase = async () => {
     try {
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS Empresas (
-                ID SERIAL PRIMARY KEY,
-                CNPJ VARCHAR(20) UNIQUE NOT NULL,
-                RazaoSocial VARCHAR(255) NOT NULL,
-                SenhaHash VARCHAR(255) NOT NULL,
-                DataCriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            CREATE TABLE IF NOT EXISTS empresas (
+                id SERIAL PRIMARY KEY,
+                cnpj VARCHAR(20) UNIQUE NOT NULL,
+                razaosocial VARCHAR(255) NOT NULL,
+                senhahash VARCHAR(255) NOT NULL,
+                datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            CREATE TABLE IF NOT EXISTS Tributos (
-                ID SERIAL PRIMARY KEY,
-                EmpresaID INT REFERENCES Empresas(ID) ON DELETE CASCADE,
-                MesReferencia VARCHAR(20) NOT NULL,
-                TipoImposto VARCHAR(100) NOT NULL,
-                Valor NUMERIC(10,2) NOT NULL,
-                DataVencimento DATE NOT NULL,
-                CodigoPix TEXT,
-                CaminhoPDF VARCHAR(255),
-                StatusPagamento VARCHAR(20) DEFAULT 'Pendente',
-                DataCriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            CREATE TABLE IF NOT EXISTS tributos (
+                id SERIAL PRIMARY KEY,
+                empresaid INT REFERENCES empresas(id) ON DELETE CASCADE,
+                mesreferencia VARCHAR(20) NOT NULL,
+                tipoimposto VARCHAR(100) NOT NULL,
+                valor NUMERIC(10,2) NOT NULL,
+                datavencimento DATE NOT NULL,
+                codigopix TEXT,
+                caminhopdf VARCHAR(255),
+                statuspagamento VARCHAR(20) DEFAULT 'Pendente',
+                datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
         console.log('Tabelas sincronizadas com sucesso no PostgreSQL!');
@@ -195,7 +175,6 @@ const initDatabase = async () => {
 
 initDatabase();
 
-// Inicialização do servidor na porta dinâmica do Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`API executando na porta ${PORT}`);
