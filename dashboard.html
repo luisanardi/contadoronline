@@ -125,7 +125,8 @@
 
         async function carregarImpostos() {
             try {
-                const response = await fetch('http://localhost:3000/api/meus-impostos', {
+                // Utiliza URL relativa para funcionar tanto local quanto no Render automaticamente
+                const response = await fetch('/api/meus-impostos', {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -141,7 +142,7 @@
 
                 tbody.innerHTML = '';
 
-                if (tributos.length === 0) {
+                if (!tributos || tributos.length === 0) {
                     emptyState.style.display = 'block';
                     return;
                 }
@@ -151,20 +152,20 @@
                 tributos.forEach(item => {
                     const tr = document.createElement('tr');
                     
-                    // Formatação de Data e Moeda
-                    const vencimento = new Date(item.datavencimento).toLocaleDateString('pt-BR');
-                    const valorFormatted = Number(item.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    // Formatação de Data e Moeda corretas baseadas no banco
+                    const vencimento = item.datavencimento ? new Date(item.datavencimento).toLocaleDateString('pt-BR') : '--/--/----';
+                    const valorFormatted = Number(item.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                     
                     tr.innerHTML = `
-                        <td><strong>${item.tipoimposto}</strong></td>
-                        <td>${item.competencia}</td>
+                        <td><strong>${item.tipoimposto || 'Imposto'}</strong></td>
+                        <td>${item.mesreferencia || '--'}</td>
                         <td>${vencimento}</td>
                         <td><strong>${valorFormatted}</strong></td>
-                        <td><span class="badge badge-pendente">PENDENTE</span></td>
+                        <td><span class="badge badge-pendente">${item.statuspagamento || 'PENDENTE'}</span></td>
                         <td>
                             <div class="action-buttons">
-                                ${item.pixcopiaecola ? `<button class="btn-action btn-pix" onclick="copiarPix('${item.pixcopiaecola}')"><i data-lucide="qr-code" style="width:14px;"></i> Copiar PIX</button>` : ''}
-                                ${item.caminhopdf ? `<a href="http://localhost:3000/${item.caminhopdf}" target="_blank" class="btn-action btn-pdf"><i data-lucide="download" style="width:14px;"></i> PDF</a>` : ''}
+                                ${item.codigopix ? `<button class="btn-action btn-pix" onclick="copiarPix('${item.codigopix}')"><i data-lucide="qr-code" style="width:14px;"></i> Copiar PIX</button>` : ''}
+                                ${item.caminhopdf ? `<a href="/${item.caminhopdf}" target="_blank" class="btn-action btn-pdf"><i data-lucide="download" style="width:14px;"></i> PDF</a>` : ''}
                             </div>
                         </td>
                     `;
