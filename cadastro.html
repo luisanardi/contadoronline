@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Empresa - Seu Contador Online</title>
+    <!-- Fonte Inter & Ícones Lucide -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { display: flex; min-height: 100vh; background-color: #f8fafc; color: #0f172a; }
+        
+        /* Layout em Duas Colunas */
+        .container { display: flex; width: 100vw; height: 100vh; }
+        
+        /* Banner Lateral (Destaque Visual) */
+        .brand-side { 
+            flex: 1; 
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); 
+            color: #ffffff; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            padding: 60px;
+        }
+        .brand-header { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .brand-hero h1 { font-size: 38px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; }
+        .brand-hero p { font-size: 17px; color: #bfdbfe; line-height: 1.6; }
+        
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .info-card p { font-size: 14px; color: #f1f5f9; }
+
+        /* Lado do Formulário */
+        .form-side { flex: 1.2; display: flex; align-items: center; justify-content: center; padding: 40px; overflow-y: auto; }
+        .form-card { width: 100%; max-width: 480px; background: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+        .form-header { margin-bottom: 28px; }
+        .form-header h2 { font-size: 26px; font-weight: 700; color: #0f172a; }
+        .form-header p { font-size: 14px; color: #64748b; margin-top: 6px; }
+
+        /* Inputs e Grupos */
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i { position: absolute; left: 14px; color: #94a3b8; width: 20px; height: 20px; }
+        .input-wrapper input { 
+            width: 100%; 
+            padding: 12px 14px 12px 44px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            outline: none; 
+            transition: all 0.2s ease; 
+        }
+        .input-wrapper input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+
+        /* Mensagens de Alerta */
+        .alert-message {
+            display: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            border: 1px solid transparent;
+        }
+        .alert-error { background-color: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+
+        /* Botões */
+        .btn-submit { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: #2563eb; 
+            color: #ffffff; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: background 0.2s ease; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        .btn-submit:hover { background-color: #1d4ed8; }
+        
+        .footer-text { text-align: center; font-size: 14px; color: #64748b; margin-top: 24px; }
+        .footer-text a { color: #2563eb; text-decoration: none; font-weight: 600; }
+        .footer-text a:hover { text-decoration: underline; }
+
+        /* Responsividade para Celulares */
+        @media (max-width: 900px) {
+            .brand-side { display: none; }
+            .form-side { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Lado Esquerdo - Visual -->
+    <div class="brand-side">
+        <div class="brand-header">
+            <i data-lucide="file-text"></i> Seu Contador Online
+        </div>
+        <div class="brand-hero">
+            <h1>Cadastre sua empresa e simplifique a gestão fiscal.</h1>
+            <p>Acesse suas guias de impostos, boletos e pagamentos via PIX em um só lugar.</p>
+            
+            <div class="info-card">
+                <p><strong>Primeiro Acesso:</strong> Após realizar o cadastro, utilize seu CNPJ e a senha criada para entrar no painel exclusivo.</p>
+            </div>
+        </div>
+        <div style="font-size: 12px; opacity: 0.8;">© 2026 Seu Contador Online. Todos os direitos reservados.</div>
+    </div>
+
+    <!-- Lado Direito - Formulário de Cadastro -->
+    <div class="form-side">
+        <div class="form-card">
+            <div class="form-header">
+                <h2>Criar Conta da Empresa</h2>
+                <p>Preencha os dados abaixo para cadastrar seu CNPJ.</p>
+            </div>
+
+            <!-- Caixa de Alerta -->
+            <div class="alert-message" id="alertMessage"></div>
+
+            <form id="formCadastro" onsubmit="cadastrarEmpresa(event)">
+                <!-- CNPJ -->
+                <div class="input-group">
+                    <label for="cnpj">CNPJ da Empresa</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="building-2"></i>
+                        <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required onkeyup="mascaraCNPJ(this)" onblur="consultarCNPJ(this.value)">
+                    </div>
+                </div>
+
+                <!-- Razão Social -->
+                <div class="input-group">
+                    <label for="razaoSocial">Razão Social / Nome Empresarial</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="building"></i>
+                        <input type="text" id="razaoSocial" name="razaoSocial" placeholder="Nome Fantasia ou Razão Social" required>
+                    </div>
+                </div>
+
+                <!-- Senha -->
+                <div class="input-group">
+                    <label for="senha">Criar Senha</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="lock"></i>
+                        <input type="password" id="senha" name="senha" placeholder="Mínimo de 6 caracteres" minlength="6" required>
+                    </div>
+                </div>
+
+                <!-- Confirmar Senha -->
+                <div class="input-group">
+                    <label for="confirmarSenha">Confirmar Senha</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="check-circle-2"></i>
+                        <input type="password" id="confirmarSenha" name="confirmarSenha" placeholder="Repita a senha" required>
+                    </div>
+                </div>
+
+                <!-- Botão Enviar -->
+                <button type="submit" class="btn-submit" id="btnSubmit">
+                    Cadastrar Empresa <i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="footer-text">
+                Já possui cadastro? <a href="index.html">Acessar Plataforma</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+    lucide.createIcons();
+
+    // Aplica máscara automática de CNPJ no input
+    function mascaraCNPJ(v) {
+        v.value = v.value.replace(/\D/g, "");
+        v.value = v.value.replace(/^(\d{2})(\d)/, "$1.$2");
+        v.value = v.value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+        v.value = v.value.replace(/\.(\d{3})(\d)/, ".$1/$2");
+        v.value = v.value.replace(/(\d{4})(\d)/, "$1-$2");
+    }
+
+    // Busca automática da Razão Social na Receita via API Pública
+    async function consultarCNPJ(cnpjComMascara) {
+        const cnpjApenasNumeros = cnpjComMascara.replace(/\D/g, '');
+        if (cnpjApenasNumeros.length !== 14) return;
+
+        const inputRazao = document.getElementById('razaoSocial');
+        inputRazao.placeholder = "Buscando dados da empresa...";
+
+        try {
+            const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpjApenasNumeros}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.razao_social) {
+                    inputRazao.value = data.razao_social;
+                }
+            }
+        } catch (error) {
+            console.log("Consulta de CNPJ falhou, preenchimento manual ativado.");
+        } finally {
+            inputRazao.placeholder = "Nome Fantasia ou Razão Social";
+        }
+    }
+
+    // Exibe alertas estilizados
+    function showAlert(mensagem, tipo = 'error') {
+        const alertBox = document.getElementById('alertMessage');
+        alertBox.textContent = mensagem;
+        alertBox.className = `alert-message alert-${tipo}`;
+        alertBox.style.display = 'block';
+    }
+
+    // Envio do formulário para o Backend
+    async function cadastrarEmpresa(event) {
+        event.preventDefault();
+
+        const cnpj = document.getElementById('cnpj').value;
+        const razaoSocial = document.getElementById('razaoSocial').value;
+        const senha = document.getElementById('senha').value;
+        const confirmarSenha = document.getElementById('confirmarSenha').value;
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        if (senha !== confirmarSenha) {
+            showAlert('As senhas digitadas não coincidem.');
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = 'Cadastrando...';
+
+        try {
+            const response = await fetch('http://localhost:3000/api/cadastrar-empresa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cnpj, razaoSocial, senha })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('Cadastro realizado com sucesso! Redirecionando para o login...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            } else {
+                showAlert(data.erro || 'Erro ao cadastrar empresa.');
+            }
+        } catch (error) {
+            showAlert('Não foi possível conectar ao servidor backend.');
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = 'Cadastrar Empresa <i data-lucide="arrow-right"></i>';
+            lucide.createIcons();
+        }
+    }
+</script>
+
+</body>
+</html>

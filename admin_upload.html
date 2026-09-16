@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Contador - Envio de Impostos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #f1f5f9; color: #0f172a; padding: 40px 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header { margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
+        .header h1 { font-size: 22px; font-weight: 700; color: #1e293b; }
+        .header p { font-size: 14px; color: #64748b; margin-top: 4px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .full-width { grid-column: span 2; }
+
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        .input-group input, .input-group select, .input-group textarea { 
+            width: 100%; 
+            padding: 10px 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            outline: none; 
+            transition: border 0.2s; 
+        }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #2563eb; }
+
+        /* Estilo da Área de Soltar Arquivo (Drag and Drop) */
+        .upload-box { 
+            border: 2px dashed #cbd5e1; 
+            border-radius: 8px; 
+            padding: 24px; 
+            text-align: center; 
+            background: #f8fafc; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        .upload-box:hover { background: #f1f5f9; border-color: #2563eb; }
+        .upload-box i { color: #64748b; margin-bottom: 8px; }
+        .upload-box p { font-size: 13px; color: #64748b; }
+
+        .btn-submit { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #059669; 
+            color: #ffffff; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 15px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
+        .btn-submit:hover { background-color: #047857; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Área de Publicação de Impostos</h1>
+        <p>Vincule guias de pagamento aos clientes via CNPJ.</p>
+    </div>
+
+    <form action="/api/tributos/publicar" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <!-- CNPJ da Empresa -->
+            <div class="input-group full-width">
+                <label for="cnpj">CNPJ do Cliente</label>
+                <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required onkeyup="mascaraCNPJ(this)">
+            </div>
+
+            <!-- Tipo de Imposto -->
+            <div class="input-group">
+                <label for="tipoImposto">Tipo de Imposto</label>
+                <select id="tipoImposto" name="tipoImposto" required>
+                    <option value="">Selecione...</option>
+                    <option value="DAS">DAS (Simples Nacional)</option>
+                    <option value="DARF">DARF</option>
+                    <option value="GPS">GPS (INSS)</option>
+                    <option value="ISS">ISS Homologado</option>
+                    <option value="ICMS">ICMS</option>
+                    <option value="OUTROS">Outras Taxas</option>
+                </select>
+            </div>
+
+            <!-- Competência -->
+            <div class="input-group">
+                <label for="competencia">Competência (Mês/Ano)</label>
+                <input type="text" id="competencia" name="competencia" placeholder="09/2026" maxlength="7" required>
+            </div>
+
+            <!-- Valor (R$) -->
+            <div class="input-group">
+                <label for="valor">Valor do Imposto (R$)</label>
+                <input type="number" step="0.01" id="valor" name="valor" placeholder="0,00" required>
+            </div>
+
+            <!-- Vencimento -->
+            <div class="input-group">
+                <label for="vencimento">Data de Vencimento</label>
+                <input type="date" id="vencimento" name="vencimento" required>
+            </div>
+
+            <!-- Código PIX Copia e Cola -->
+            <div class="input-group full-width">
+                <label for="pix">PIX Copia e Cola (Opcional)</label>
+                <textarea id="pix" name="pix" rows="2" placeholder="00020126360014BR.GOV.BCB.PIX..."></textarea>
+            </div>
+
+            <!-- Upload do PDF -->
+            <div class="input-group full-width">
+                <label>Arquivo PDF da Guia</label>
+                <div class="upload-box" onclick="document.getElementById('pdf_file').click()">
+                    <i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>
+                    <p id="file-name">Clique para selecionar ou arraste o PDF do imposto aqui</p>
+                    <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf" style="display: none;" required onchange="atualizarNomeArquivo(this)">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit">
+            <i data-lucide="send"></i> Disponibilizar Guia para o Cliente
+        </button>
+    </form>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    function mascaraCNPJ(v) {
+        v.value = v.value.replace(/\D/g, "");
+        v.value = v.value.replace(/^(\d{2})(\d)/, "$1.$2");
+        v.value = v.value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+        v.value = v.value.replace(/\.(\d{3})(\d)/, ".$1/$2");
+        v.value = v.value.replace(/(\d{4})(\d)/, "$1-$2");
+    }
+
+    function atualizarNomeArquivo(input) {
+        const fileNameText = document.getElementById('file-name');
+        if (input.files && input.files[0]) {
+            fileNameText.textContent = `Arquivo selecionado: ${input.files[0].name}`;
+            fileNameText.style.color = '#2563eb';
+            fileNameText.style.fontWeight = '600';
+        }
+    }
+</script>
+
+</body>
+</html>
