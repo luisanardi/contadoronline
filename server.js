@@ -8,7 +8,10 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuração do Banco de Dados PostgreSQL (Certifique-se de que a variável DATABASE_URL está configurada no Render)
+// Serve os arquivos HTML/CSS/JS que estão na mesma pasta do server.js
+app.use(express.static(__dirname));
+
+// Configuração do Banco de Dados PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
