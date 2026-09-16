@@ -35,7 +35,6 @@ app.use(express.static(path.join(__dirname)));
 // Inicialização e atualização automática das tabelas e colunas no PostgreSQL
 async function iniciarBanco() {
     try {
-        // Garante que as tabelas base existam se for um banco novo
         await pool.query(`
             CREATE TABLE IF NOT EXISTS contadores (
                 id SERIAL PRIMARY KEY,
@@ -52,7 +51,7 @@ async function iniciarBanco() {
                 cnpj VARCHAR(30) UNIQUE NOT NULL,
                 razaosocial VARCHAR(255) NOT NULL,
                 emailempresa VARCHAR(255),
-                senha VARCHAR(255) NOT NULL,
+                senha VARCHAR(255),
                 senhahash VARCHAR(255),
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -72,7 +71,6 @@ async function iniciarBanco() {
             );
         `);
 
-        // Corrige restrições e colunas antigas no banco existente
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
@@ -84,14 +82,14 @@ async function iniciarBanco() {
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS emailempresa VARCHAR(255);
             
-            ALTER TABLE empresas ALTER COLUMN senha TYPE VARCHAR(255);
+            ALTER TABLE empresas ALTER COLUMN senha DROP NOT NULL;
             ALTER TABLE empresas ALTER COLUMN senhahash DROP NOT NULL;
             ALTER TABLE empresas ALTER COLUMN cnpj TYPE VARCHAR(30);
 
             ALTER TABLE guias ALTER COLUMN cnpj TYPE VARCHAR(30);
         `);
 
-        console.log("Banco de dados sincronizado e colunas atualizadas com sucesso!");
+        console.log("Banco de dados sincronizado com sucesso!");
     } catch (erro) {
         console.error("Erro ao inicializar o banco de dados:", erro);
     }
@@ -99,7 +97,7 @@ async function iniciarBanco() {
 
 iniciarBanco();
 
-// Middleware de Autenticação JWT para rotas protegidas
+// Middleware de Autenticação JWT
 function verificarToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     if (!authHeader) {
@@ -116,14 +114,13 @@ function verificarToken(req, res, next) {
             return res.status(401).json({ erro: 'Token inválido ou expirado.' });
         }
         req.contadorId = decoded.id;
-        req.empresaCnpj = decoded.cnpj; // Identifica se for token de empresa
+        req.empresaCnpj = decoded.cnpj;
         next();
     });
 }
 
 // ==================== ROTAS DE CONTADORES ====================
 
-// Cadastro de Contador
 app.post('/api/contador/cadastro', async (req, res) => {
     try {
         const { nomeEscritorio, email, senha } = req.body;
@@ -154,7 +151,6 @@ app.post('/api/contador/cadastro', async (req, res) => {
     }
 });
 
-// Login de Contador
 app.post('/api/contador/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
@@ -163,18 +159,12 @@ app.post('/api/contador/login', async (req, res) => {
         }
 
         const resultado = await pool.query('SELECT * FROM contadores WHERE email = $1', [email]);
-
         if (resultado.rows.length === 0) {
             return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
         }
 
         const contador = resultado.rows[0];
         const senhaArmazenada = contador.senha || contador.senhahash;
-
-        if (!senhaArmazenada) {
-            return res.status(400).json({ erro: 'Esta conta não possui senha definida. Por favor, cadastre um novo escritório.' });
-        }
-
         const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
 
         if (!senhaValida) {
@@ -207,49 +197,28 @@ app.get('/api/empresas', verificarToken, async (req, res) => {
     }
 });
 
+// Cadastro de empresa pelo Contador (agora a senha é opcional ou gerada automaticamente se vazia)
 app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     try {
         let { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
-        if (!cnpj || !razaoSocial || !senha) {
-            return res.status(400).json({ erro: 'Preencha os campos obrigatórios.' });
+        if (!cnpj || !razaoSocial) {
+            return res.status(400).json({ erro: 'Preencha o CNPJ e a Razão Social.' });
         }
 
         cnpj = cnpj.trim();
-        const senhaHash = await bcrypt.hash(senha, 10);
+        
+        // Se o contador não mandou senha, definimos uma provisória ou deixamos nula para o cliente definir no primeiro acesso
+        let senhaHash = null;
+        if (senha) {
+            senhaHash = await bcrypt.hash(senha, 10);
+        }
 
-        // Insere salvando a senha criptografada tanto em senha quanto em senhahash para compatibilidade total
         await pool.query(
             'INSERT INTO empresas (contador_id, cnpj, razaosocial, emailempresa, senha, senhahash) VALUES ($1, $2, $3, $4, $5, $5)',
             [req.contadorId, cnpj, razaoSocial, emailEmpresa, senhaHash]
         );
 
-        if (emailEmpresa && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-            const senhaMascarada = '•'.repeat(senha.length);
-            const linkPortal = `https://${req.get('host')}/index.html`;
-
-            const mailOptions = {
-                from: process.env.EMAIL_USER,
-                to: emailEmpresa,
-                subject: `Acesso Liberado - ${razaoSocial}`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                        <h2>Olá, ${razaoSocial}!</h2>
-                        <p>Sua conta no portal do escritório contábil foi cadastrada com sucesso.</p>
-                        <p><strong>Dados de Acesso:</strong></p>
-                        <ul>
-                            <li><strong>CNPJ:</strong> ${cnpj}</li>
-                            <li><strong>Senha:</strong> ${senhaMascarada}</li>
-                        </ul>
-                        <p>Você já pode acessar o portal para consultar suas guias e impostos através do link abaixo:</p>
-                        <a href="${linkPortal}" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 5px;">Acessar Portal</a>
-                    </div>
-                `
-            };
-
-            transporter.sendMail(mailOptions).catch(err => console.error("Erro ao enviar e-mail:", err));
-        }
-
-        res.status(201).json({ mensagem: 'Empresa cadastrada com sucesso e e-mail disparado!' });
+        res.status(201).json({ mensagem: 'Empresa cadastrada com sucesso!' });
     } catch (erro) {
         if (erro.code === '23505') {
             return res.status(400).json({ erro: 'Este CNPJ já está cadastrado.' });
@@ -261,14 +230,12 @@ app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
 app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
     try {
         const { id } = req.params;
-
         const empresa = await pool.query('SELECT * FROM empresas WHERE id = $1 AND contador_id = $2', [id, req.contadorId]);
         if (empresa.rows.length === 0) {
             return res.status(404).json({ erro: 'Empresa não encontrada.' });
         }
 
         const cnpj = empresa.rows[0].cnpj;
-
         await pool.query('DELETE FROM guias WHERE cnpj = $1', [cnpj]);
         await pool.query('DELETE FROM empresas WHERE id = $1', [id]);
 
@@ -278,18 +245,46 @@ app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
     }
 });
 
-// ==================== LOGIN E PAINEL DO CLIENTE (EMPRESA) ====================
+// ==================== LOGIN E PRIMEIRO ACESSO DO CLIENTE ====================
+
+// Rota de Primeiro Acesso: Cliente coloca o CNPJ e define sua senha exclusiva
+app.post('/api/empresa/definir-senha', async (req, res) => {
+    try {
+        let { cnpj, novaSenha } = req.body;
+        if (!cnpj || !novaSenha) {
+            return res.status(400).json({ erro: 'Informe o CNPJ e a nova senha.' });
+        }
+
+        cnpj = cnpj.trim();
+        const resultado = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpj]);
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({ erro: 'CNPJ não encontrado. Verifique com seu contador se sua empresa já foi cadastrada.' });
+        }
+
+        const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+        await pool.query(
+            'UPDATE empresas SET senha = $1, senhahash = $1 WHERE cnpj = $2',
+            [senhaHash, cnpj]
+        );
+
+        res.json({ mensagem: 'Senha cadastrada com sucesso! Agora você já pode fazer login.' });
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao definir senha: ' + erro.message });
+    }
+});
 
 // Login do Cliente/Empresa
 app.post('/api/empresa/login', async (req, res) => {
     try {
-        const { cnpj, senha } = req.body;
+        let { cnpj, senha } = req.body;
         if (!cnpj || !senha) {
             return res.status(400).json({ erro: 'Informe o CNPJ e a senha.' });
         }
 
-        const cnpjLimpo = cnpj.trim();
-        const resultado = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
+        cnpj = cnpj.trim();
+        const resultado = await pool.query('SELECT * FROM empresas WHERE cnpj = $1', [cnpj]);
 
         if (resultado.rows.length === 0) {
             return res.status(400).json({ erro: 'CNPJ ou senha incorretos.' });
@@ -297,8 +292,12 @@ app.post('/api/empresa/login', async (req, res) => {
 
         const empresa = resultado.rows[0];
         const senhaArmazenada = empresa.senha || empresa.senhahash;
-        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
 
+        if (!senhaArmazenada) {
+            return res.status(400).json({ erro: 'Esta empresa ainda não possui senha cadastrada. Utilize a opção de "Primeiro Acesso / Definir Senha".' });
+        }
+
+        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
         if (!senhaValida) {
             return res.status(400).json({ erro: 'CNPJ ou senha incorretos.' });
         }
@@ -316,16 +315,10 @@ app.post('/api/empresa/login', async (req, res) => {
     }
 });
 
-// Listar guias para a empresa logada visualizar e pagar
+// Listar guias para a empresa logada
 app.get('/api/empresa/guias', verificarToken, async (req, res) => {
     try {
-        let cnpjConsulta = req.empresaCnpj;
-
-        // Se o token for de contador simulando ou algo assim, pega o parâmetro, mas para cliente usa o token dele
-        if (!cnpjConsulta && req.query.cnpj) {
-            cnpjConsulta = req.query.cnpj;
-        }
-
+        const cnpjConsulta = req.empresaCnpj;
         if (!cnpjConsulta) {
             return res.status(400).json({ erro: 'CNPJ não identificado no token.' });
         }
@@ -340,11 +333,10 @@ app.get('/api/empresa/guias', verificarToken, async (req, res) => {
     }
 });
 
-// Download do PDF da Guia para o cliente pagar/consultar
+// Download do PDF da Guia
 app.get('/api/empresa/guias/download/:id', verificarToken, async (req, res) => {
     try {
         const { id } = req.params;
-
         const resultado = await pool.query(
             'SELECT arquivonome, arquivotipo, arquivodados FROM guias WHERE id = $1',
             [id]
@@ -355,7 +347,6 @@ app.get('/api/empresa/guias/download/:id', verificarToken, async (req, res) => {
         }
 
         const guia = resultado.rows[0];
-
         res.setHeader('Content-Type', guia.arquivotipo || 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${guia.arquivonome || 'guia.pdf'}"`);
         res.send(guia.arquivodados);
