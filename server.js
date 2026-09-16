@@ -14,7 +14,7 @@ app.use(cors());
 // Serve os arquivos estáticos da raiz
 app.use(express.static(__dirname));
 
-// CORREÇÃO DO PDF: Libera a pasta uploads publicamente
+// Libera o acesso público aos arquivos PDF salvos na pasta uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configuração da conexão com o banco PostgreSQL no Render
@@ -142,6 +142,35 @@ app.post('/api/tributos/publicar', upload.single('arquivoPdf'), async (req, res)
     } catch (err) {
         console.error('Erro ao publicar imposto:', err);
         res.status(500).json({ erro: 'Erro ao cadastrar imposto.' });
+    }
+});
+
+// Deletar Guia de Imposto (Painel Admin)
+app.delete('/api/tributos/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Busca o caminho do PDF para remover o arquivo físico da pasta uploads
+        const tributoResult = await pool.query('SELECT caminhopdf FROM tributos WHERE id = $1', [id]);
+        
+        if (tributoResult.rows.length === 0) {
+            return res.status(404).json({ erro: 'Guia não encontrada.' });
+        }
+
+        const caminhoPdf = tributoResult.rows[0].caminhopdf;
+
+        // Se o arquivo existir no disco, deleta ele
+        if (caminhopdf && fs.existsSync(caminhopdf)) {
+            fs.unlinkSync(caminhopdf);
+        }
+
+        // Deleta o registro do banco de dados
+        await pool.query('DELETE FROM tributos WHERE id = $1', [id]);
+
+        res.json({ mensagem: 'Guia deletada com sucesso!' });
+    } catch (err) {
+        console.error('Erro ao deletar guia:', err);
+        res.status(500).json({ erro: 'Erro ao deletar guia no servidor.' });
     }
 });
 
