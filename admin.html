@@ -1,136 +1,322 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Contador - Publicar Imposto</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>Painel do Contador - Administração</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background-color: #f8fafc; color: #0f172a; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .card { background: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); width: 100%; max-width: 500px; }
-        h2 { font-size: 24px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
-        p.subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
-        .input-group { margin-bottom: 16px; }
-        label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
-        input { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; transition: all 0.2s; }
-        input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
-        .btn-submit { width: 100%; padding: 14px; background-color: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
-        .btn-submit:hover { background-color: #1d4ed8; }
-        .alert { display: none; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
-        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-        .alert-error { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .bg-corporate {
+            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.90)), 
+                        url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
     </style>
 </head>
-<body>
+<body class="bg-corporate min-h-screen text-slate-100 flex flex-col justify-between">
 
-<div class="card">
-    <h2>Painel do Contador</h2>
-    <p class="subtitle">Publique guias e tributos para as empresas cadastradas.</p>
+    <!-- Cabeçalho -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg py-4 px-6 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2.5 rounded-lg text-white shadow-md">
+                <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide">Painel Administrativo</h1>
+                <p class="text-xs text-slate-400">Gestão de Empresas e Guias Contábeis</p>
+            </div>
+        </div>
+        <a href="index.html" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-700">
+            <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Sair / Home
+        </a>
+    </header>
 
-    <div id="alertBox" class="alert"></div>
+    <!-- Conteúdo Principal -->
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full">
 
-    <form id="formImposto" onsubmit="publicarGuia(event)">
-        <div class="input-group">
-            <label for="cnpj">CNPJ da Empresa</label>
-            <input type="text" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required onkeyup="mascaraCNPJ(this)">
+        <!-- MODO 1: Lista de Empresas -->
+        <div id="secao-empresas" class="space-y-6">
+            <div class="flex justify-between items-center bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Empresas Clientes</h2>
+                    <p class="text-sm text-slate-400">Selecione uma empresa para gerenciar as guias de impostos.</p>
+                </div>
+                <div class="bg-blue-600/20 border border-blue-500/30 text-blue-400 px-4 py-2 rounded-xl text-sm font-semibold">
+                    <span id="total-empresas">0</span> Empresas Cadastradas
+                </div>
+            </div>
+
+            <div class="bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4 font-semibold">CNPJ</th>
+                                <th class="p-4 font-semibold">Razão Social</th>
+                                <th class="p-4 font-semibold">Data de Cadastro</th>
+                                <th class="p-4 font-semibold text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-empresas" class="divide-y divide-slate-800/60 text-sm">
+                            <!-- Preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
-        <div class="input-group">
-            <label for="mesReferencia">Competência / Mês de Referência</label>
-            <input type="text" id="mesReferencia" placeholder="Ex: 08/2026" required>
+        <!-- MODO 2: Gestão da Empresa Selecionada (Oculto inicialmente) -->
+        <div id="secao-gestao" class="hidden space-y-6">
+            <!-- Barra de Retorno e Identificação -->
+            <div class="bg-slate-900/70 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <button onclick="voltarParaLista()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-sm font-medium transition border border-slate-700 flex items-center">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> Voltar para Lista
+                </button>
+                <div class="text-left md:text-right">
+                    <h2 id="empresa-selecionada-nome" class="text-xl font-bold text-white">Nome da Empresa</h2>
+                    <p id="empresa-selecionada-cnpj" class="text-xs text-blue-400 font-mono">CNPJ: 00.000.000/0001-00</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulário de Envio de Guia -->
+                <div class="bg-slate-900/70 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-2xl lg:col-span-1">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i> Publicar Nova Guia
+                    </h3>
+                    <form id="form-publicar" class="space-y-4">
+                        <input type="hidden" id="input-cnpj-oculto">
+                        
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Mês de Referência (Competência)</label>
+                            <input type="text" id="mesReferencia" placeholder="Ex: 10/2026" required class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Tipo de Imposto</label>
+                            <input type="text" id="tipoImposto" placeholder="Ex: DAS, GPS, DARF, ISS" required class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Valor (R$)</label>
+                            <input type="text" id="valor" placeholder="Ex: 1500,50" required class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Data de Vencimento</label>
+                            <input type="date" id="dataVencimento" required class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Código PIX (Opcional)</label>
+                            <textarea id="codigoPix" rows="2" placeholder="Cole a chave ou copia e cola do PIX" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Arquivo PDF da Guia</label>
+                            <input type="file" id="arquivoPdf" accept="application/pdf" required class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer">
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200">
+                            <i class="fa-solid fa-paper-plane mr-2"></i> Enviar Guia para Empresa
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tabela de Guias da Empresa Selecionada -->
+                <div class="bg-slate-900/70 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-2xl lg:col-span-2 flex flex-col">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-folder-open text-blue-500 mr-2"></i> Guias Publicadas para esta Empresa
+                    </h3>
+                    
+                    <div class="overflow-x-auto flex-grow">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                                    <th class="p-3 font-semibold">Imposto</th>
+                                    <th class="p-3 font-semibold">Competência</th>
+                                    <th class="p-3 font-semibold">Vencimento</th>
+                                    <th class="p-3 font-semibold">Valor</th>
+                                    <th class="p-3 font-semibold text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-guias-empresa" class="divide-y divide-slate-800/60 text-sm">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="input-group">
-            <label for="tipoImposto">Tipo de Imposto</label>
-            <input type="text" id="tipoImposto" placeholder="Ex: SIMPLES NACIONAL" required>
-        </div>
+    </main>
 
-        <div class="input-group">
-            <label for="valor">Valor (R$)</label>
-            <!-- Alterado para type="text" permitindo vírgulas -->
-            <input type="text" id="valor" placeholder="Ex: 15571,43" required>
-        </div>
+    <!-- Rodapé -->
+    <footer class="text-center py-6 text-xs text-slate-500 border-t border-slate-800/60 mt-12">
+        &copy; 2026 - Painel Administrativo Contábil. Todos os direitos reservados.
+    </footer>
 
-        <div class="input-group">
-            <label for="dataVencimento">Data de Vencimento</label>
-            <input type="date" id="dataVencimento" required>
-        </div>
+    <!-- Script de Gestão -->
+    <script>
+        let empresaAtualCnpj = '';
 
-        <div class="input-group">
-            <label for="codigoPix">Código PIX (Copia e Cola)</label>
-            <input type="text" id="codigoPix" placeholder="00020126580014br.gov.bcb.pix...">
-        </div>
+        // Carregar lista de empresas ao iniciar a página
+        async function carregarEmpresas() {
+            try {
+                // Rota rápida para buscar lista de empresas (criaremos endpoint ou usamos rota existente se houver)
+                // Caso queira que o backend envie a lista, vamos ajustar o server.js se necessário. 
+                // Por segurança, vamos buscar via fetch('/api/empresas')
+                const res = await fetch('/api/empresas');
+                const empresas = await res.json();
 
-        <div class="input-group">
-            <label for="arquivoPdf">Arquivo PDF da Guia</label>
-            <input type="file" id="arquivoPdf" accept="application/pdf">
-        </div>
+                const tbody = document.getElementById('tabela-empresas');
+                document.getElementById('total-empresas').innerText = empresas.length;
+                tbody.innerHTML = '';
 
-        <button type="submit" class="btn-submit" id="btnSubmit">Publicar Guia</button>
-    </form>
-</div>
+                if (empresas.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Nenhuma empresa cadastrada no sistema.</td></tr>`;
+                    return;
+                }
 
-<script>
-    function mascaraCNPJ(v) {
-        v.value = v.value.replace(/\D/g, "");
-        v.value = v.value.replace(/^(\d{2})(\d)/, "$1.$2");
-        v.value = v.value.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-        v.value = v.value.replace(/\.(\d{3})(\d)/, ".$1/$2");
-        v.value = v.value.replace(/(\d{4})(\d)/, "$1-$2");
-    }
+                empresas.forEach(emp => {
+                    const cnpjFormatado = emp.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+                    const dataFormatada = new Date(emp.datacriacao).toLocaleDateString('pt-BR');
 
-    function showAlert(msg, tipo) {
-        const box = document.getElementById('alertBox');
-        box.textContent = msg;
-        box.className = `alert alert-${tipo}`;
-        box.style.display = 'block';
-    }
-
-    async function publicarGuia(event) {
-        event.preventDefault();
-        const btn = document.getElementById('btnSubmit');
-        btn.disabled = true;
-        btn.textContent = 'Enviando...';
-
-        // Tratamento do valor: remove pontos de milhar e troca vírgula decimal por ponto para o banco
-        let valorBruto = document.getElementById('valor').value;
-        let valorTratado = valorBruto.replace(/\./g, '').replace(',', '.');
-
-        const formData = new FormData();
-        formData.append('cnpj', document.getElementById('cnpj').value);
-        formData.append('mesReferencia', document.getElementById('mesReferencia').value);
-        formData.append('tipoImposto', document.getElementById('tipoImposto').value);
-        formData.append('valor', valorTratado);
-        formData.append('dataVencimento', document.getElementById('dataVencimento').value);
-        formData.append('codigoPix', document.getElementById('codigoPix').value);
-        
-        const arquivo = document.getElementById('arquivoPdf').files[0];
-        if (arquivo) formData.append('arquivoPdf', arquivo);
-
-        try {
-            const response = await fetch('/api/tributos/publicar', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                showAlert('Guia publicada com sucesso para a empresa!', 'success');
-                document.getElementById('formImposto').reset();
-            } else {
-                showAlert(data.erro || 'Erro ao publicar guia.', 'error');
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="p-4 font-mono text-slate-300">${cnpjFormatado}</td>
+                            <td class="p-4 font-semibold text-white">${emp.razaosocial}</td>
+                            <td class="p-4 text-slate-400">${dataFormatada}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="abrirGestaoEmpresa('${emp.cnpj}', '${emp.razaosocial}')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition">
+                                    <i class="fa-solid fa-folder-tree mr-1.5"></i> Gerenciar Guias
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error('Erro ao carregar empresas:', err);
+                document.getElementById('tabela-empresas').innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">Erro ao carregar empresas do servidor.</td></tr>`;
             }
-        } catch (error) {
-            showAlert('Erro de conexão com o servidor.', 'error');
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Publicar Guia';
         }
-    }
-</script>
 
+        async function abrirGestaoEmpresa(cnpj, razaoSocial) {
+            empresaAtualCnpj = cnpj;
+            document.getElementById('secao-empresas').classList.add('hidden');
+            document.getElementById('secao-gestao').classList.remove('hidden');
+
+            document.getElementById('empresa-selecionada-nome').innerText = razaoSocial;
+            document.getElementById('empresa-selecionada-cnpj').innerText = `CNPJ: ${cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")}`;
+            document.getElementById('input-cnpj-oculto').value = cnpj;
+
+            carregarGuiasDaEmpresa(cnpj);
+        }
+
+        function voltarParaLista() {
+            document.getElementById('secao-gestao').classList.add('hidden');
+            document.getElementById('secao-empresas').classList.remove('hidden');
+            carregarEmpresas();
+        }
+
+        async function carregarGuiasDaEmpresa(cnpj) {
+            try {
+                // Buscamos as guias do banco filtrando por esta empresa
+                const res = await fetch(`/api/tributos/empresa/${cnpj}`);
+                const guias = await res.json();
+
+                const tbody = document.getElementById('tabela-guias-empresa');
+                tbody.innerHTML = '';
+
+                if (guias.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhuma guia cadastrada para esta empresa.</td></tr>`;
+                    return;
+                }
+
+                guias.forEach(g => {
+                    const dataVenc = new Date(g.datavencimento).toLocaleDateString('pt-BR');
+                    const valorFormatado = Number(g.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="p-3 font-semibold text-white">${g.tipoimposto}</td>
+                            <td class="p-3 text-slate-300">${g.mesreferencia}</td>
+                            <td class="p-3 text-slate-300">${dataVenc}</td>
+                            <td class="p-3 text-emerald-400 font-medium">${valorFormatado}</td>
+                            <td class="p-3 text-right space-x-2">
+                                <a href="/${g.caminhopdf}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition inline-block">
+                                    <i class="fa-solid fa-file-pdf"></i> PDF
+                                </a>
+                                <button onclick="deletarGuia(${g.id})" class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-red-500/30 transition">
+                                    <i class="fa-solid fa-trash"></i> Deletar
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error('Erro ao carregar guias:', err);
+            }
+        }
+
+        // Envio de nova guia
+        document.getElementById('form-publicar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('cnpj', empresaAtualCnpj);
+            formData.append('mesReferencia', document.getElementById('mesReferencia').value);
+            formData.append('tipoImposto', document.getElementById('tipoImposto').value);
+            formData.append('valor', document.getElementById('valor').value.replace(',', '.'));
+            formData.append('dataVencimento', document.getElementById('dataVencimento').value);
+            formData.append('codigoPix', document.getElementById('codigoPix').value);
+            formData.append('arquivoPdf', document.getElementById('arquivoPdf').files[0]);
+
+            try {
+                const res = await fetch('/api/tributos/publicar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const resultado = await res.json();
+                if (res.ok) {
+                    alert('Guia publicada com sucesso!');
+                    document.getElementById('form-publicar').reset();
+                    carregarGuiasDaEmpresa(empresaAtualCnpj);
+                } else {
+                    alert('Erro: ' + resultado.erro);
+                }
+            } catch (err) {
+                console.error('Erro ao publicar:', err);
+                alert('Erro de conexão ao publicar guia.');
+            }
+        });
+
+        async function deletarGuia(id) {
+            if (!confirm('Tem certeza que deseja deletar esta guia? O arquivo PDF e o registro serão apagados.')) return;
+
+            try {
+                const res = await fetch(`/api/tributos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    alert('Guia deletada com sucesso!');
+                    carregarGuiasDaEmpresa(empresaAtualCnpj);
+                } else {
+                    alert('Erro ao deletar guia.');
+                }
+            } catch (err) {
+                console.error('Erro ao deletar:', err);
+                alert('Erro de conexão.');
+            }
+        }
+
+        // Executa ao carregar
+        carregarEmpresas();
+    </script>
 </body>
 </html>
