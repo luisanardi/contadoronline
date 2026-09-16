@@ -62,8 +62,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Valor do Imposto (R$)</label>
-                        <!-- Campo ajustado para aceitar vírgula e ponto livremente -->
-                        <input type="text" id="valor" required placeholder="Ex: 15,25 ou 15.25" oninput="this.value = this.value.replace(',', '.')" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                        <!-- Campo com formatação automática de moeda (ex: 15.336,02) -->
+                        <input type="text" id="valor" required placeholder="Ex: 15336,02 ou 15.336,02" oninput="mascaraMoeda(this)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
                     </div>
 
                     <div>
@@ -103,6 +103,19 @@
 
         document.getElementById('cnpj-empresa-topo').textContent = `Empresa CNPJ: ${cnpjEmpresa}`;
 
+        // Função de máscara monetária para aceitar pontos de milhar e vírgula decimal
+        function mascaraMoeda(campo) {
+            let valor = campo.value.replace(/\D/g, ""); // Remove tudo que não for número
+            if (valor === "") {
+                campo.value = "";
+                return;
+            }
+            valor = (parseInt(valor, 10) / 100).toFixed(2) + ""; // Transforma em centavos
+            valor = valor.replace(".", ","); // Troca ponto decimal por vírgula
+            valor = valor.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Adiciona o ponto de milhar
+            campo.value = valor;
+        }
+
         document.getElementById('form-upload-guia').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btnEnviar = document.getElementById('btn-enviar');
@@ -111,11 +124,15 @@
             btnEnviar.textContent = 'Enviando arquivo...';
             btnEnviar.disabled = true;
 
+            // Pega o valor formatado (ex: 15.336,02) e converte para o formato do banco (15336.02)
+            let valorDigitado = document.getElementById('valor').value;
+            let valorBanco = valorDigitado.replace(/\./g, '').replace(',', '.');
+
             const formData = new FormData();
             formData.append('cnpj', cnpjEmpresa);
             formData.append('tipoImposto', document.getElementById('tipoImposto').value);
             formData.append('competencia', document.getElementById('competencia').value);
-            formData.append('valor', document.getElementById('valor').value);
+            formData.append('valor', valorBanco);
             formData.append('vencimento', document.getElementById('vencimento').value);
             formData.append('pix', document.getElementById('pix').value);
             formData.append('arquivoPdf', document.getElementById('arquivoPdf').files[0]);
