@@ -95,7 +95,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Buscar Impostos da Empresa (Painel)
+// Buscar Impostos da Empresa (Painel do Cliente)
 app.get('/api/meus-impostos', async (req, res) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -115,6 +115,41 @@ app.get('/api/meus-impostos', async (req, res) => {
     } catch (err) {
         console.error('Erro ao buscar impostos:', err);
         res.status(401).json({ erro: 'Sessão inválida ou expirada.' });
+    }
+});
+
+// ==========================================
+// ROTAS PARA O PAINEL DO CONTADOR
+// ==========================================
+
+// Listar todas as empresas cadastradas (Painel Admin)
+app.get('/api/empresas', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, cnpj, razaosocial, datacriacao FROM empresas ORDER BY razaosocial ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Erro ao listar empresas:', err);
+        res.status(500).json({ erro: 'Erro ao buscar empresas.' });
+    }
+});
+
+// Listar tributos de uma empresa específica pelo CNPJ (Painel Admin)
+app.get('/api/tributos/empresa/:cnpj', async (req, res) => {
+    const { cnpj } = req.params;
+    const cnpjLimpo = cnpj.replace(/\D/g, '');
+
+    try {
+        const empresaResult = await pool.query('SELECT id FROM empresas WHERE cnpj = $1', [cnpjLimpo]);
+        if (empresaResult.rows.length === 0) {
+            return res.status(404).json({ erro: 'Empresa não encontrada.' });
+        }
+
+        const empresaId = empresaResult.rows[0].id;
+        const result = await pool.query('SELECT * FROM tributos WHERE empresaid = $1 ORDER BY datavencimento ASC', [empresaId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Erro ao buscar tributos da empresa:', err);
+        res.status(500).json({ erro: 'Erro ao buscar guias.' });
     }
 });
 
@@ -150,7 +185,6 @@ app.delete('/api/tributos/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Busca o caminho do PDF para remover o arquivo físico da pasta uploads
         const tributoResult = await pool.query('SELECT caminhopdf FROM tributos WHERE id = $1', [id]);
         
         if (tributoResult.rows.length === 0) {
@@ -159,12 +193,10 @@ app.delete('/api/tributos/:id', async (req, res) => {
 
         const caminhoPdf = tributoResult.rows[0].caminhopdf;
 
-        // Se o arquivo existir no disco, deleta ele
         if (caminhopdf && fs.existsSync(caminhopdf)) {
             fs.unlinkSync(caminhopdf);
         }
 
-        // Deleta o registro do banco de dados
         await pool.query('DELETE FROM tributos WHERE id = $1', [id]);
 
         res.json({ mensagem: 'Guia deletada com sucesso!' });
