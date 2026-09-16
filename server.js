@@ -32,16 +32,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
-// Inicialização e atualização forçada das colunas e tabelas no PostgreSQL
+// Inicialização e atualização automática das tabelas e colunas no PostgreSQL
 async function iniciarBanco() {
     try {
-        // 1. Cria as tabelas básicas se não existirem
         await pool.query(`
             CREATE TABLE IF NOT EXISTS contadores (
                 id SERIAL PRIMARY KEY,
                 nomeescritorio VARCHAR(255),
                 email VARCHAR(255) UNIQUE NOT NULL,
                 senha VARCHAR(255),
+                senhahash VARCHAR(255),
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -70,15 +70,16 @@ async function iniciarBanco() {
             );
         `);
 
-        // 2. Força a adição de colunas caso a tabela antiga já exista sem elas
+        // Garante compatibilidade caso a coluna antiga se chame 'senhahash' ou 'senha'
         await pool.query(`
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
+            ALTER TABLE contadores ADD COLUMN IF NOT EXISTS senhahash VARCHAR(255);
             ALTER TABLE contadores ADD COLUMN IF NOT EXISTS nomeescritorio VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS senha VARCHAR(255);
             ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razaosocial VARCHAR(255);
         `);
 
-        console.log("Banco de dados sincronizado e colunas verificadas com sucesso!");
+        console.log("Banco de dados sincronizado com sucesso!");
     } catch (erro) {
         console.error("Erro ao inicializar o banco de dados:", erro);
     }
@@ -118,8 +119,10 @@ app.post('/api/contador/cadastro', async (req, res) => {
         }
 
         const hashSenha = await bcrypt.hash(senha, 10);
+        
+        // Insere preenchendo tanto 'senha' quanto 'senhahash' para evitar qualquer conflito de restrição
         const resultado = await pool.query(
-            'INSERT INTO contadores (nomeescritorio, email, senha) VALUES ($1, $2, $3) RETURNING id, nomeescritorio, email',
+            'INSERT INTO contadores (nomeescritorio, email, senha, senhahash) VALUES ($1, $2, $3, $3) RETURNING id, nomeescritorio, email',
             [nomeEscritorio, email, hashSenha]
         );
 
@@ -147,13 +150,13 @@ app.post('/api/contador/login', async (req, res) => {
         }
 
         const contador = resultado.rows[0];
-        
-        // Garante que o contador antigo possui senha cadastrada
-        if (!contador.senha) {
-            return res.status(400).json({ erro: 'Esta conta antiga não possui senha definida. Por favor, cadastre um novo escritório.' });
+        const senhaArmazenada = contador.senha || contador.senhahash;
+
+        if (!senhaArmazenada) {
+            return res.status(400).json({ erro: 'Esta conta não possui senha definida. Por favor, cadastre um novo escritório.' });
         }
 
-        const senhaValida = await bcrypt.compare(senha, contador.senha);
+        const senhaValida = await bcrypt.compare(senha, senhaArmazenada);
 
         if (!senhaValida) {
             return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
@@ -173,7 +176,6 @@ app.post('/api/contador/login', async (req, res) => {
 
 // ==================== ROTAS DE EMPRESAS ====================
 
-// Listar empresas do contador logado
 app.get('/api/empresas', verificarToken, async (req, res) => {
     try {
         const resultado = await pool.query(
@@ -186,7 +188,6 @@ app.get('/api/empresas', verificarToken, async (req, res) => {
     }
 });
 
-// Cadastrar Empresa pelo Painel
 app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     try {
         const { cnpj, razaoSocial, emailEmpresa, senha } = req.body;
@@ -236,7 +237,6 @@ app.post('/api/cadastrar-empresa', verificarToken, async (req, res) => {
     }
 });
 
-// Deletar Empresa e suas guias vinculadas
 app.delete('/api/empresas/:id', verificarToken, async (req, res) => {
     try {
         const { id } = req.params;
