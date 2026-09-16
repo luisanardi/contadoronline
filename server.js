@@ -142,7 +142,7 @@ app.post('/api/tributos/publicar', upload.single('arquivoPdf'), async (req, res)
     }
 });
 
-// Criação Automática e Limpa das Tabelas
+// Recriação Limpa das Tabelas
 const initDatabase = async () => {
     try {
         await pool.query(`
@@ -154,7 +154,9 @@ const initDatabase = async () => {
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            CREATE TABLE IF NOT EXISTS tributos (
+            DROP TABLE IF EXISTS tributos CASCADE;
+
+            CREATE TABLE tributos (
                 id SERIAL PRIMARY KEY,
                 empresaid INT REFERENCES empresas(id) ON DELETE CASCADE,
                 mesreferencia VARCHAR(20) NOT NULL,
@@ -167,7 +169,7 @@ const initDatabase = async () => {
                 datacriacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log('Tabelas sincronizadas com sucesso no PostgreSQL!');
+        console.log('Tabelas recriadas e sincronizadas com sucesso no PostgreSQL!');
     } catch (err) {
         console.error('Erro ao inicializar banco de dados:', err);
     }
