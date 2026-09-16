@@ -11,15 +11,18 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Garante que as pastas de upload existam no servidor
+// Libera todos os arquivos HTML, CSS e JS da raiz do projeto para a web
+app.use(express.static(__dirname));
+
+// Garante que a pasta de upload de guias exista no servidor
 const uploadDir = path.join(__dirname, 'uploads', 'guias');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configuração do Banco de Dados PostgreSQL (Local ou Render)
+// Configuração do Banco de Dados PostgreSQL
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://seu_usuario:sua_senha@localhost:5432/seu_banco',
+    connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
@@ -154,6 +157,6 @@ app.post('/api/tributos/publicar', upload.single('pdf_file'), async (req, res) =
     }
 });
 
-// Porta dinâmica configurada para o Render (process.env.PORT)
+// Porta dinâmica para o Render
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API executando na porta ${PORT}`));
